@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  
+  .font-bengali {
+    font-family: 'Hind Siliguri', 'Plus Jakarta Sans', sans-serif;
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0B100E;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #202E29;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #16E05C;
+}
+
+/* Modern Card Glass & Glow Utilities */
+.card-glass {
+  background: linear-gradient(135deg, rgba(20, 29, 26, 0.75) 0%, rgba(11, 16, 14, 0.85) 100%);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(44, 62, 55, 0.6);
+}
+
+.card-glass-glow {
+  background: linear-gradient(135deg, rgba(20, 29, 26, 0.85) 0%, rgba(11, 16, 14, 0.95) 100%);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(22, 224, 92, 0.25);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5), 0 0 15px -3px rgba(22, 224, 92, 0.15);
+}
+
+.border-glow-hover:hover {
+  border-color: rgba(22, 224, 92, 0.6);
+  box-shadow: 0 0 20px rgba(22, 224, 92, 0.25);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.text-gradient-parrot {
+  background: linear-gradient(135deg, #A7F3C4 0%, #16E05C 50%, #08C353 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
