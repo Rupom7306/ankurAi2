@@ -3,14 +3,12 @@ import { Navbar } from './components/Navbar';
 import { AuthModal } from './components/AuthModal';
 import { ImageCaptureHero } from './components/ImageCaptureHero';
 import { MetricsOverview } from './components/MetricsOverview';
-import { GrowthStageVisualizer } from './components/GrowthStageVisualizer';
 import { BatchCardPreview } from './components/BatchCardPreview';
 import { RoadmapView } from './components/RoadmapView';
-import { CropBatch, GrowthStage, SensorReading } from './types';
-import { Sprout, ArrowRight } from 'lucide-react';
+import { CropBatch, SensorReading } from './types';
+import { ArrowRight } from 'lucide-react';
 
 export const App: React.FC = () => {
-  const [selectedGrowthStage, setSelectedGrowthStage] = useState<GrowthStage>('Vegetative');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'batches' | 'roadmap'>('dashboard');
 
   // User Authentication State
@@ -32,7 +30,7 @@ export const App: React.FC = () => {
         longitude: 90.4203,
       },
       sensorSetId: 'SEN-SET-901',
-      growthStage: selectedGrowthStage,
+      growthStage: 'Vegetative',
       healthScore: 92,
       condition: 'Excellent',
       priority: 'Low',
@@ -176,9 +174,9 @@ export const App: React.FC = () => {
 
         {/* Tab 1: Minimalist Dashboard */}
         {activeTab === 'dashboard' && (
-          <div className="space-y-6">
+          <div className="space-y-8">
             
-            {/* DIRECT BUTTONS FOR PIC (In Middle, Ultra Minimalistic) */}
+            {/* IN MIDDLE: DOTTED ROUNDED RECTANGLE WITH TWO LARGE SQUARE BUTTONS (CAMERA & UPLOAD) */}
             <ImageCaptureHero />
 
             {/* Clean Metrics Overview */}
@@ -188,36 +186,6 @@ export const App: React.FC = () => {
               atRiskBatches={mockBatches.filter((b) => b.condition === 'At Risk').length}
               criticalBatches={mockBatches.filter((b) => b.condition === 'Critical').length}
             />
-
-            {/* Growth Stage Visualizer (Glitch-free clean 5 level boxes) */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs text-slate-400">
-                <span className="font-semibold flex items-center gap-1.5 text-slate-300">
-                  <Sprout className="w-3.5 h-3.5 text-parrot-400" />
-                  Growth Stage
-                </span>
-                <div className="flex items-center gap-1">
-                  {(['Germination', 'Seedling', 'Vegetative', 'Reproductive', 'Maturity'] as GrowthStage[]).map((st) => (
-                    <button
-                      key={st}
-                      onClick={() => setSelectedGrowthStage(st)}
-                      className={`px-2 py-0.5 rounded text-[11px] font-medium transition-all ${
-                        selectedGrowthStage === st
-                          ? 'bg-parrot-500 text-dark-950 font-bold'
-                          : 'bg-dark-900 text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      {st}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <GrowthStageVisualizer 
-                currentStage={selectedGrowthStage} 
-                onSelectStage={(stage) => setSelectedGrowthStage(stage)}
-              />
-            </div>
 
             {/* Monitored Crop Batches */}
             <div className="space-y-3 pt-2">

@@ -69,7 +69,6 @@ export const ImageCaptureHero: React.FC = () => {
     setIsCameraActive(true);
 
     try {
-      // Requests camera permission from browser (environment camera for phone, webcam on laptop/desktop)
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: 'environment' },
@@ -88,8 +87,8 @@ export const ImageCaptureHero: React.FC = () => {
       console.error('Camera permission or device error:', err);
       const errorMessage =
         err instanceof Error && err.name === 'NotAllowedError'
-          ? 'Camera permission was denied. Please allow camera permissions in your browser address bar.'
-          : 'Unable to access camera device. Please ensure a camera is connected or use the Upload button.';
+          ? 'Camera permission denied. Please allow camera access in your browser.'
+          : 'Unable to access camera device. Please connect a camera or upload a photo.';
       setCameraError(errorMessage);
     }
   };
@@ -217,7 +216,7 @@ export const ImageCaptureHero: React.FC = () => {
                     muted
                     className="w-full h-full object-cover"
                   />
-                  {/* Subtle viewfinder crosshairs */}
+                  {/* Viewfinder crosshairs */}
                   <div className="absolute inset-8 border border-parrot-400/30 rounded-xl pointer-events-none flex items-center justify-center">
                     <div className="w-8 h-8 border-t-2 border-l-2 border-parrot-400 absolute top-0 left-0"></div>
                     <div className="w-8 h-8 border-t-2 border-r-2 border-parrot-400 absolute top-0 right-0"></div>
@@ -242,32 +241,44 @@ export const ImageCaptureHero: React.FC = () => {
         </div>
       )}
 
-      {/* DIRECT BUTTONS FOR PIC (Ultra Minimalistic) */}
+      {/* DOTTED ROUNDED-CORNER RECTANGLE CONTAINER */}
       {!selectedImage ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl mx-auto my-4">
-          {/* Button 1: Capture with Camera */}
-          <button
-            onClick={handleStartCamera}
-            className="flex items-center justify-center gap-3 py-5 px-6 rounded-2xl bg-parrot-500 hover:bg-parrot-400 text-dark-950 font-extrabold text-base shadow-glow-sm hover:shadow-glow-md transition-all duration-200 transform hover:-translate-y-0.5"
-          >
-            <Camera className="w-6 h-6 stroke-[2.2]" />
-            <span>Capture Photo</span>
-          </button>
+        <div className="w-full max-w-2xl mx-auto my-6 p-6 sm:p-10 rounded-3xl border-2 border-dashed border-parrot-500/30 hover:border-parrot-500/60 bg-dark-900/30 backdrop-blur-sm transition-all duration-300 flex flex-col items-center justify-center">
+          
+          {/* TWO LARGE SQUARE BUTTONS GROUPED TOGETHER */}
+          <div className="grid grid-cols-2 gap-4 sm:gap-8 w-full max-w-md">
+            
+            {/* Square Button 1: Camera */}
+            <button
+              onClick={handleStartCamera}
+              className="aspect-square flex flex-col items-center justify-center rounded-2xl bg-gradient-to-br from-parrot-400 via-parrot-500 to-parrot-600 text-dark-950 shadow-glow-sm hover:shadow-glow-md hover:scale-105 active:scale-95 transition-all duration-200 p-4 sm:p-6 group cursor-pointer border border-parrot-300"
+            >
+              <div className="p-3 sm:p-4 rounded-2xl bg-dark-950/15 mb-2 sm:mb-3 group-hover:scale-110 transition-transform">
+                <Camera className="w-10 h-10 sm:w-14 sm:h-14 stroke-[2.2]" />
+              </div>
+              <span className="text-base sm:text-xl font-extrabold tracking-tight">Camera</span>
+              <span className="text-[11px] sm:text-xs font-semibold opacity-90 mt-0.5">Capture</span>
+            </button>
 
-          {/* Button 2: Upload Photo */}
-          <button
-            onClick={handleTriggerUpload}
-            className="flex items-center justify-center gap-3 py-5 px-6 rounded-2xl bg-dark-900 hover:bg-dark-850 text-white font-extrabold text-base border border-dark-750 hover:border-parrot-500/50 transition-all duration-200 transform hover:-translate-y-0.5"
-          >
-            <UploadCloud className="w-6 h-6 text-parrot-400 stroke-[2.2]" />
-            <span>Upload Photo</span>
-          </button>
+            {/* Square Button 2: Upload */}
+            <button
+              onClick={handleTriggerUpload}
+              className="aspect-square flex flex-col items-center justify-center rounded-2xl bg-dark-900/90 hover:bg-dark-850 text-white border-2 border-parrot-500/40 hover:border-parrot-400 shadow-inner-glow hover:shadow-glow-sm hover:scale-105 active:scale-95 transition-all duration-200 p-4 sm:p-6 group cursor-pointer"
+            >
+              <div className="p-3 sm:p-4 rounded-2xl bg-dark-800 text-parrot-400 mb-2 sm:mb-3 group-hover:scale-110 transition-transform border border-parrot-500/20">
+                <UploadCloud className="w-10 h-10 sm:w-14 sm:h-14 stroke-[2.2]" />
+              </div>
+              <span className="text-base sm:text-xl font-extrabold tracking-tight group-hover:text-parrot-300 transition-colors">Upload</span>
+              <span className="text-[11px] sm:text-xs font-medium text-slate-400 mt-0.5">Select Image</span>
+            </button>
+
+          </div>
         </div>
       ) : (
-        /* Image Preview & Diagnosis Card (Clean & Minimal) */
-        <div className="max-w-xl mx-auto p-5 rounded-2xl bg-dark-900 border border-parrot-500/40 shadow-glow-sm animate-fadeIn my-4">
+        /* Image Preview & Diagnosis Card inside clean container */
+        <div className="max-w-xl mx-auto p-5 sm:p-6 rounded-3xl bg-dark-900 border border-parrot-500/40 shadow-glow-sm animate-fadeIn my-6">
           <div className="flex gap-4 items-center">
-            <div className="relative w-28 h-28 rounded-xl overflow-hidden border border-parrot-500/50 shrink-0 bg-black">
+            <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-2xl overflow-hidden border border-parrot-500/50 shrink-0 bg-black">
               <img
                 src={selectedImage}
                 alt="Selected crop"
