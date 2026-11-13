@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { CropBatch, SensorReading } from '../types';
 import { 
   MapPin, 
@@ -7,7 +7,10 @@ import {
   QrCode, 
   AlertCircle, 
   Droplets,
-  ArrowRight
+  ArrowRight,
+  ChevronDown,
+  ChevronUp,
+  Activity
 } from 'lucide-react';
 
 interface BatchCardPreviewProps {
@@ -23,6 +26,9 @@ export const BatchCardPreview: React.FC<BatchCardPreviewProps> = ({
   onSelectBatch,
   onScanClick,
 }) => {
+  // State to toggle hidden crop conditions & sensor info
+  const [isExpanded, setIsExpanded] = useState(false);
+
   // Determine health condition style & glow
   const getConditionStyle = (cond: CropBatch['condition']) => {
     switch (cond) {
@@ -30,14 +36,14 @@ export const BatchCardPreview: React.FC<BatchCardPreviewProps> = ({
         return {
           textColor: 'text-parrot-400',
           bgColor: 'bg-parrot-500/10 border-parrot-500/30',
-          glow: 'shadow-glow-sm',
+          glow: 'hover:shadow-glow-sm',
           strokeColor: '#16E05C',
         };
       case 'Healthy':
         return {
           textColor: 'text-emerald-400',
           bgColor: 'bg-emerald-500/10 border-emerald-500/30',
-          glow: 'shadow-[0_0_15px_rgba(16,185,129,0.2)]',
+          glow: 'hover:shadow-[0_0_15px_rgba(16,185,129,0.2)]',
           strokeColor: '#10B981',
         };
       case 'Moderate':
@@ -51,14 +57,14 @@ export const BatchCardPreview: React.FC<BatchCardPreviewProps> = ({
         return {
           textColor: 'text-amber-400',
           bgColor: 'bg-amber-500/10 border-amber-500/30',
-          glow: 'shadow-glow-warning',
+          glow: 'hover:shadow-glow-warning',
           strokeColor: '#F59E0B',
         };
       case 'Critical':
         return {
           textColor: 'text-rose-400',
           bgColor: 'bg-rose-500/15 border-rose-500/40',
-          glow: 'shadow-glow-danger',
+          glow: 'hover:shadow-glow-danger',
           strokeColor: '#EF4444',
         };
     }
@@ -67,165 +73,179 @@ export const BatchCardPreview: React.FC<BatchCardPreviewProps> = ({
   const style = getConditionStyle(batch.condition);
 
   return (
-    <div className={`card-glass relative rounded-2xl p-5 sm:p-6 border border-dark-750 hover:border-parrot-500/40 transition-all duration-300 ${style.glow} group`}>
-      {/* Top Header: Batch Name & Priority Badge */}
-      <div className="flex items-start justify-between gap-3 mb-4">
+    <div className={`card-glass rounded-2xl p-5 border border-dark-750 hover:border-parrot-500/40 transition-all duration-300 ${style.glow}`}>
+      
+      {/* Top Header: Batch Name, Priority & Quick Health Badge */}
+      <div className="flex items-start justify-between gap-3 mb-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-xl">🌾</span>
-            <h4 className="text-lg font-bold text-white group-hover:text-parrot-300 transition-colors">
+            <span className="text-lg">🌾</span>
+            <h4 className="text-base sm:text-lg font-bold text-white">
               {batch.batchName}
             </h4>
           </div>
-          <p className="text-xs text-slate-400 font-medium mt-0.5">
-            Variety: <span className="text-slate-200">{batch.cropType} {batch.variety ? `(${batch.variety})` : ''}</span>
+          <p className="text-xs text-slate-400 mt-0.5">
+            {batch.cropType} {batch.variety ? `• ${batch.variety}` : ''}
           </p>
         </div>
 
-        {/* Priority Badge */}
-        <div className="flex flex-col items-end gap-1">
+        <div className="flex items-center gap-2">
+          {/* Quick Health Score pill */}
+          <span className={`text-xs px-2.5 py-1 rounded-lg font-bold border ${style.bgColor} ${style.textColor}`}>
+            {batch.healthScore}% • {batch.condition}
+          </span>
+          
           <span
-            className={`text-xs px-2.5 py-0.5 rounded-full font-bold border uppercase tracking-wider ${
+            className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider ${
               batch.priority === 'Critical'
-                ? 'bg-rose-500/20 text-rose-400 border-rose-500/40 animate-pulse'
+                ? 'bg-rose-500/20 text-rose-400'
                 : batch.priority === 'High'
-                ? 'bg-amber-500/20 text-amber-400 border-amber-500/40'
-                : 'bg-dark-800 text-parrot-400 border-parrot-500/30'
+                ? 'bg-amber-500/20 text-amber-400'
+                : 'bg-dark-800 text-parrot-400'
             }`}
           >
-            {batch.priority} Priority
-          </span>
-          <span className="text-[10px] text-slate-400 font-mono">
-            ID: {batch.id.substring(0, 8)}
+            {batch.priority}
           </span>
         </div>
       </div>
 
-      {/* Middle Grid: Circular Health Score & Farm Details */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-dark-900/70 border border-dark-800/80 mb-5">
-        {/* Health Score Gauge */}
-        <div className="flex items-center gap-3.5 sm:col-span-1">
-          <div className="relative w-16 h-16 flex items-center justify-center">
-            <svg className="w-16 h-16 transform -rotate-90">
-              <circle
-                cx="32"
-                cy="32"
-                r="26"
-                stroke="currentColor"
-                strokeWidth="5"
-                className="text-dark-800"
-                fill="transparent"
-              />
-              <circle
-                cx="32"
-                cy="32"
-                r="26"
-                stroke={style.strokeColor}
-                strokeWidth="5"
-                strokeDasharray={163.36}
-                strokeDashoffset={163.36 - (163.36 * batch.healthScore) / 100}
-                strokeLinecap="round"
-                fill="transparent"
-                className="transition-all duration-1000 ease-out"
-              />
-            </svg>
-            <div className="absolute flex flex-col items-center">
-              <span className="text-base font-extrabold text-white">
-                {batch.healthScore}%
-              </span>
+      {/* BUTTON TO EXPAND / HIDE CROP CONDITIONS & SENSOR DETAILS */}
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full flex items-center justify-between px-3.5 py-2 my-2 rounded-xl bg-dark-900/90 hover:bg-dark-850 border border-dark-800 hover:border-parrot-500/30 text-xs text-slate-300 hover:text-parrot-300 transition-all group"
+      >
+        <span className="flex items-center gap-2 font-medium">
+          <Activity className="w-3.5 h-3.5 text-parrot-400" />
+          <span>{isExpanded ? 'Hide Crop Conditions & Sensors' : 'View Crop Conditions & Sensors'}</span>
+        </span>
+        {isExpanded ? (
+          <ChevronUp className="w-4 h-4 text-parrot-400" />
+        ) : (
+          <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-parrot-400" />
+        )}
+      </button>
+
+      {/* HIDDEN DETAILS (Only visible when button is clicked to expand) */}
+      {isExpanded && (
+        <div className="space-y-4 pt-2 animate-fadeIn">
+          {/* Health Gauge & Location details */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-xl bg-dark-950/80 border border-dark-800">
+            {/* Health Score Gauge */}
+            <div className="flex items-center gap-3 sm:col-span-1">
+              <div className="relative w-12 h-12 flex items-center justify-center">
+                <svg className="w-12 h-12 transform -rotate-90">
+                  <circle
+                    cx="24"
+                    cy="24"
+                    r="19"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    className="text-dark-800"
+                    fill="transparent"
+                  />
+                  <circle
+                    cx="24"
+                    cy="24"
+                    r="19"
+                    stroke={style.strokeColor}
+                    strokeWidth="4"
+                    strokeDasharray={119.38}
+                    strokeDashoffset={119.38 - (119.38 * batch.healthScore) / 100}
+                    strokeLinecap="round"
+                    fill="transparent"
+                    className="transition-all duration-700 ease-out"
+                  />
+                </svg>
+                <div className="absolute text-xs font-extrabold text-white">
+                  {batch.healthScore}%
+                </div>
+              </div>
+
+              <div>
+                <span className="text-[10px] uppercase text-slate-400 font-bold block">Status</span>
+                <span className={`text-xs font-bold ${style.textColor}`}>{batch.condition}</span>
+                <div className="text-[10px] text-slate-400">Stage: {batch.growthStage}</div>
+              </div>
+            </div>
+
+            {/* Location & Metadata */}
+            <div className="flex flex-col justify-center gap-1 sm:col-span-2 text-xs text-slate-300">
+              <div className="flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-parrot-400 shrink-0" />
+                <span className="truncate">{batch.farmLocation.name}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-parrot-400 shrink-0" />
+                <span>Planted: {batch.plantingDate}</span>
+              </div>
+              <div className="flex items-center gap-1.5 font-mono text-[11px] text-slate-400">
+                <Cpu className="w-3.5 h-3.5 text-parrot-400 shrink-0" />
+                <span>Sensor ID: {batch.sensorSetId}</span>
+              </div>
             </div>
           </div>
 
-          <div>
-            <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold block">
-              Condition
-            </span>
-            <span className={`text-sm font-bold ${style.textColor}`}>
-              {batch.condition}
-            </span>
-            <div className="text-[10px] text-slate-400">
-              Phenology: {batch.growthStage}
-            </div>
-          </div>
-        </div>
+          {/* Sensor Readings Grid (NPK + Humidity) */}
+          {sensorData && (
+            <div>
+              <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5">
+                <span className="font-semibold flex items-center gap-1 text-slate-300">
+                  <Droplets className="w-3.5 h-3.5 text-cyan-400" />
+                  Live Soil Conditions
+                </span>
+                <span className="text-[10px] font-mono text-parrot-400">10-Min Telemetry</span>
+              </div>
 
-        {/* Location & Dates */}
-        <div className="flex flex-col justify-center gap-1.5 sm:col-span-2 text-xs text-slate-300">
-          <div className="flex items-center gap-2">
-            <MapPin className="w-3.5 h-3.5 text-parrot-400 shrink-0" />
-            <span className="truncate">{batch.farmLocation.name}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Calendar className="w-3.5 h-3.5 text-parrot-400 shrink-0" />
-            <span>Sown: {batch.plantingDate}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Cpu className="w-3.5 h-3.5 text-parrot-400 shrink-0" />
-            <span className="font-mono text-[11px] text-slate-400">Sensor: {batch.sensorSetId}</span>
-          </div>
-        </div>
-      </div>
+              <div className="grid grid-cols-4 gap-2 text-center">
+                <div className="p-2 rounded-lg bg-dark-950 border border-dark-800">
+                  <div className="text-[10px] text-slate-400">N</div>
+                  <div className="text-xs font-extrabold text-parrot-400">{sensorData.nitrogen}</div>
+                </div>
+                <div className="p-2 rounded-lg bg-dark-950 border border-dark-800">
+                  <div className="text-[10px] text-slate-400">P</div>
+                  <div className="text-xs font-extrabold text-cyan-400">{sensorData.phosphorus}</div>
+                </div>
+                <div className="p-2 rounded-lg bg-dark-950 border border-dark-800">
+                  <div className="text-[10px] text-slate-400">K</div>
+                  <div className="text-xs font-extrabold text-emerald-400">{sensorData.potassium}</div>
+                </div>
+                <div className="p-2 rounded-lg bg-dark-950 border border-dark-800">
+                  <div className="text-[10px] text-slate-400">Humidity</div>
+                  <div className="text-xs font-extrabold text-sky-400">{sensorData.soilHumidity}%</div>
+                </div>
+              </div>
+            </div>
+          )}
 
-      {/* Sensor Ingestion Snapshot */}
-      {sensorData && (
-        <div className="mb-5">
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-            <span className="font-semibold flex items-center gap-1.5 text-slate-300">
-              <Droplets className="w-3.5 h-3.5 text-cyan-400" />
-              Soil & Mineral Telemetry (10-Min Sync)
-            </span>
-            <span className="text-[10px] font-mono text-parrot-400/90">LIVE READINGS</span>
-          </div>
-
-          <div className="grid grid-cols-4 gap-2 text-center">
-            <div className="p-2 rounded-lg bg-dark-950/70 border border-dark-800">
-              <div className="text-[10px] text-slate-400 font-bold">Nitrogen (N)</div>
-              <div className="text-sm font-extrabold text-parrot-400">{sensorData.nitrogen} <span className="text-[9px] font-normal text-slate-400">mg/kg</span></div>
+          {/* Warning banner if active issues */}
+          {batch.activeIssuesCount > 0 && (
+            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
+              <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+              <span>{batch.activeIssuesCount} issue(s) flagged for attention.</span>
             </div>
-            <div className="p-2 rounded-lg bg-dark-950/70 border border-dark-800">
-              <div className="text-[10px] text-slate-400 font-bold">Phosphorus (P)</div>
-              <div className="text-sm font-extrabold text-cyan-400">{sensorData.phosphorus} <span className="text-[9px] font-normal text-slate-400">mg/kg</span></div>
-            </div>
-            <div className="p-2 rounded-lg bg-dark-950/70 border border-dark-800">
-              <div className="text-[10px] text-slate-400 font-bold">Potassium (K)</div>
-              <div className="text-sm font-extrabold text-emerald-400">{sensorData.potassium} <span className="text-[9px] font-normal text-slate-400">mg/kg</span></div>
-            </div>
-            <div className="p-2 rounded-lg bg-dark-950/70 border border-dark-800">
-              <div className="text-[10px] text-slate-400 font-bold">Humidity</div>
-              <div className="text-sm font-extrabold text-sky-400">{sensorData.soilHumidity}%</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Critical Issue Red Warning Banner if needed */}
-      {batch.activeIssuesCount > 0 && (
-        <div className="flex items-center gap-2.5 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs mb-4">
-          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 animate-pulse" />
-          <span>
-            <strong>{batch.activeIssuesCount} Suspected Issue(s)</strong> detected. Urgent scan recommended.
-          </span>
+          )}
         </div>
       )}
 
       {/* Card Action Footer */}
-      <div className="flex items-center justify-between pt-3 border-t border-dark-800 text-xs">
+      <div className="flex items-center justify-between pt-3 mt-1 border-t border-dark-800 text-xs">
         <button
           onClick={() => onScanClick && onScanClick(batch)}
-          className="flex items-center gap-1.5 text-slate-300 hover:text-parrot-400 font-medium transition-colors"
+          className="flex items-center gap-1.5 text-slate-300 hover:text-parrot-400 transition-colors"
         >
-          <QrCode className="w-4 h-4 text-parrot-400" />
+          <QrCode className="w-3.5 h-3.5 text-parrot-400" />
           <span>Batch QR</span>
         </button>
 
         <button
           onClick={() => onSelectBatch && onSelectBatch(batch.id)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-parrot-500/10 hover:bg-parrot-500/20 text-parrot-300 border border-parrot-500/30 font-semibold transition-all group-hover:translate-x-0.5"
+          className="flex items-center gap-1 px-3 py-1 rounded-lg bg-parrot-500/10 hover:bg-parrot-500/20 text-parrot-300 border border-parrot-500/30 font-semibold transition-all"
         >
-          <span>View Batch Details</span>
-          <ArrowRight className="w-3.5 h-3.5" />
+          <span>Batch Details</span>
+          <ArrowRight className="w-3 h-3" />
         </button>
       </div>
+
     </div>
   );
 };
