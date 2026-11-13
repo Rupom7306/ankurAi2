@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Lock, Mail, User, Sprout, ArrowRight, AlertCircle, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -8,34 +8,48 @@ interface AuthModalProps {
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
-  const { loginUser, registerUser } = useAuth();
+  const { currentUser, loginUser, registerUser, loginWithGoogle } = useAuth();
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
+
+  // Automatically close modal when user successfully authenticates
+  useEffect(() => {
+    if (currentUser && isOpen) {
+      onClose();
+    }
+  }, [currentUser, isOpen, onClose]);
 
   if (!isOpen) return null;
 
-  const getFriendlyErrorMessage = (code: string) => {
+  const getFriendlyErrorMessage = (code: string, message?: string) => {
     switch (code) {
       case 'auth/email-already-in-use':
-        return 'This email is already registered. Please sign in instead.';
+        return 'This email is already registered. Please click "Sign In (লগইন)" instead.';
       case 'auth/invalid-email':
-        return 'Please enter a valid email address.';
+        return 'Please enter a valid email address (e.g. name@example.com).';
       case 'auth/user-not-found':
       case 'auth/wrong-password':
       case 'auth/invalid-credential':
-        return 'Invalid email or password. Please try again.';
+        return isRegister 
+          ? 'Registration failed. Please check your email and password.' 
+          : 'Invalid email or password. If you don\'t have an account yet, switch to the "Register (নিবন্ধন)" tab above!';
       case 'auth/weak-password':
-        return 'Password should be at least 6 characters.';
+        return 'Password is too weak. Please use at least 6 characters.';
       case 'auth/operation-not-allowed':
-        return 'Email/Password sign-in is not enabled yet in Firebase Console. Go to Authentication > Sign-in method > Enable Email/Password.';
+        return 'Sign-in method is not enabled yet in your Firebase Console.';
+      case 'auth/popup-closed-by-user':
+        return 'Google sign-in popup was closed before completing.';
+      case 'auth/popup-blocked':
+        return 'Google sign-in popup was blocked by your browser. Please allow popups for localhost.';
       case 'auth/network-request-failed':
-        return 'Network connection failed. Please check your internet connection.';
+        return 'Network connection error. Please verify your internet connection.';
       default:
-        return 'Authentication failed. Please check your inputs and try again.';
+        return message || (code ? `Authentication error (${code})` : 'Authentication failed. Please check your inputs.');
     }
   };
 
@@ -64,9 +78,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     } catch (err: unknown) {
       console.error('Firebase Auth error:', err);
       const firebaseError = err as { code?: string; message?: string };
-      setError(getFriendlyErrorMessage(firebaseError.code || ''));
+      setError(getFriendlyErrorMessage(firebaseError.code || '', firebaseError.message));
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setError(null);
+    setIsGoogleSubmitting(true);
+    try {
+      await loginWithGoogle();
+      onClose();
+    } catch (err: unknown) {
+      console.error('Google Auth error:', err);
+      const firebaseError = err as { code?: string; message?: string };
+      if (firebaseError.code !== 'auth/popup-closed-by-user') {
+        setError(getFriendlyErrorMessage(firebaseError.code || '', firebaseError.message));
+      }
+    } finally {
+      setIsGoogleSubmitting(false);
     }
   };
 
@@ -85,8 +116,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         </button>
 
         {/* Modal Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-dark-800 border border-parrot-500/40 shadow-glow-sm">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="flex items-center justify-center w-11 h-11 rounded-2xl bg-dark-800 border border-parrot-500/40 shadow-glow-sm">
             <Sprout className="w-6 h-6 text-parrot-400" />
           </div>
           <div>
@@ -95,7 +126,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               <span className="text-parrot-400">AI</span> 🌱
             </h3>
             <p className="text-xs text-slate-400 font-medium">
-              {isRegister ? 'Register your farmer account' : 'Sign in to access your crop batches'}
+              {isRegister ? 'Create your farmer account' : 'Sign in to access your crop batches'}
             </p>
           </div>
         </div>
@@ -108,15 +139,62 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           </div>
         )}
 
+        {/* GOOGLE SIGN IN BUTTON */}
+        <button
+          type="button"
+          onClick={handleGoogleSignIn}
+          disabled={isGoogleSubmitting || isSubmitting}
+          className="w-full py-3 px-4 rounded-xl bg-dark-800 hover:bg-dark-750 text-white font-bold text-sm border border-dark-700 hover:border-parrot-500/40 shadow-sm transition-all flex items-center justify-center gap-3 cursor-pointer disabled:opacity-60 mb-4"
+        >
+          {isGoogleSubmitting ? (
+            <>
+              <RefreshCw className="w-4 h-4 animate-spin text-parrot-400" />
+              <span>Connecting with Google...</span>
+            </>
+          ) : (
+            <>
+              {/* Google G Logo SVG */}
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                />
+              </svg>
+              <span>Continue with Google</span>
+            </>
+          )}
+        </button>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3 my-4">
+          <div className="flex-1 h-px bg-dark-800"></div>
+          <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+            or with email
+          </span>
+          <div className="flex-1 h-px bg-dark-800"></div>
+        </div>
+
         {/* Switch Tabs (Sign In / Register) */}
-        <div className="flex rounded-xl bg-dark-800/80 p-1 mb-5 border border-dark-750">
+        <div className="flex rounded-xl bg-dark-800/80 p-1 mb-4 border border-dark-750">
           <button
             type="button"
             onClick={() => {
               setIsRegister(false);
               setError(null);
             }}
-            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
+            className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
               !isRegister
                 ? 'bg-parrot-500 text-dark-950 font-bold shadow-glow-sm'
                 : 'text-slate-400 hover:text-white'
@@ -130,7 +208,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               setIsRegister(true);
               setError(null);
             }}
-            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
+            className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
               isRegister
                 ? 'bg-parrot-500 text-dark-950 font-bold shadow-glow-sm'
                 : 'text-slate-400 hover:text-white'
@@ -141,10 +219,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3.5">
           {isRegister && (
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
                 Full Name / খামারির নাম
               </label>
               <div className="relative">
@@ -162,7 +240,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
               Email Address / ইমেইল
             </label>
             <div className="relative">
@@ -179,7 +257,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
               Password / পাসওয়ার্ড
             </label>
             <div className="relative">
@@ -198,13 +276,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isGoogleSubmitting}
             className="w-full py-3 rounded-xl font-bold text-sm bg-parrot-500 hover:bg-parrot-400 text-dark-950 shadow-glow-sm hover:shadow-glow-md transition-all flex items-center justify-center gap-2 mt-2 disabled:opacity-60 cursor-pointer"
           >
             {isSubmitting ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Connecting to Firebase...</span>
+                <span>Signing in...</span>
               </>
             ) : (
               <>
