@@ -23,10 +23,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Google Auth Provider instance
-const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({ prompt: 'select_account' });
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,16 +47,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await updateProfile(user, { displayName: name });
     }
 
-    // Non-blocking sync to Firestore profile (doesn't hang if Firestore DB is pending Phase 3)
+    // Non-blocking sync to Firestore profile
     setDoc(doc(db, 'users', user.uid), {
       uid: user.uid,
       displayName: name,
       email: user.email,
       createdAt: new Date().toISOString(),
       role: 'farmer',
-    }, { merge: true }).catch(() => {
-      // Ignored non-blocking sync error
-    });
+    }, { merge: true }).catch(() => {});
 
     setCurrentUser({ ...user, displayName: name } as User);
   };
@@ -70,9 +64,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await signInWithEmailAndPassword(auth, email, password);
   };
 
-  // Login with Google Popup
+  // Login with Google
   const loginWithGoogle = async () => {
-    const userCredential = await signInWithPopup(auth, googleProvider);
+    const provider = new GoogleAuthProvider();
+    const userCredential = await signInWithPopup(auth, provider);
     const user = userCredential.user;
 
     // Non-blocking sync to Firestore profile

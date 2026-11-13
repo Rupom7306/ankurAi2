@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Lock, Mail, User, Sprout, ArrowRight, AlertCircle, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface AuthModalProps {
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const { currentUser, loginUser, registerUser, loginWithGoogle } = useAuth();
+  const { t, lang } = useLanguage();
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,29 +29,44 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   const getFriendlyErrorMessage = (code: string, message?: string) => {
+    if (lang === 'bn') {
+      switch (code) {
+        case 'auth/email-already-in-use':
+          return 'এই ইমেইলটি ইতিমধ্যে নিবন্ধিত। অনুগ্রহ করে লগইন করুন।';
+        case 'auth/invalid-email':
+          return 'সঠিক ইমেইল ঠিকানা দিন (যেমন: name@example.com)।';
+        case 'auth/user-not-found':
+        case 'auth/wrong-password':
+        case 'auth/invalid-credential':
+          return isRegister 
+            ? 'নিবন্ধন সম্পন্ন করা যায়নি। ইমেইল ও পাসওয়ার্ড পরীক্ষা করুন।' 
+            : 'ভুল ইমেইল বা পাসওয়ার্ড। আপনার একাউন্ট না থাকলে নিবন্ধন করুন।';
+        case 'auth/weak-password':
+          return 'পাসওয়ার্ডটি খুব ছোট। কমপক্ষে ৬ অক্ষর ব্যবহার করুন।';
+        case 'auth/popup-closed-by-user':
+          return 'Google সাইন-ইন উইন্ডো বন্ধ করা হয়েছে।';
+        default:
+          return message || 'প্রবেশ করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।';
+      }
+    }
+
     switch (code) {
       case 'auth/email-already-in-use':
-        return 'This email is already registered. Please click "Sign In (লগইন)" instead.';
+        return 'This email is already registered. Please sign in instead.';
       case 'auth/invalid-email':
-        return 'Please enter a valid email address (e.g. name@example.com).';
+        return 'Please enter a valid email address.';
       case 'auth/user-not-found':
       case 'auth/wrong-password':
       case 'auth/invalid-credential':
         return isRegister 
-          ? 'Registration failed. Please check your email and password.' 
-          : 'Invalid email or password. If you don\'t have an account yet, switch to the "Register (নিবন্ধন)" tab above!';
+          ? 'Registration failed. Please check your credentials.' 
+          : 'Invalid email or password. Please check your details.';
       case 'auth/weak-password':
         return 'Password is too weak. Please use at least 6 characters.';
-      case 'auth/operation-not-allowed':
-        return 'Sign-in method is not enabled yet in your Firebase Console.';
       case 'auth/popup-closed-by-user':
-        return 'Google sign-in popup was closed before completing.';
-      case 'auth/popup-blocked':
-        return 'Google sign-in popup was blocked by your browser. Please allow popups for localhost.';
-      case 'auth/network-request-failed':
-        return 'Network connection error. Please verify your internet connection.';
+        return 'Google sign-in popup was closed before completion.';
       default:
-        return message || (code ? `Authentication error (${code})` : 'Authentication failed. Please check your inputs.');
+        return message || 'Authentication failed. Please try again.';
     }
   };
 
@@ -58,12 +75,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     setError(null);
 
     if (!email || !password) {
-      setError('Please provide both email and password.');
+      setError(lang === 'bn' ? 'ইমেইল এবং পাসওয়ার্ড দুটিই প্রয়োজন।' : 'Please provide both email and password.');
       return;
     }
 
     if (isRegister && !name.trim()) {
-      setError('Please enter your full name.');
+      setError(lang === 'bn' ? 'অনুগ্রহ করে আপনার পুরো নাম লিখুন।' : 'Please enter your full name.');
       return;
     }
 
@@ -102,105 +119,48 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-dark-950/80 backdrop-blur-md animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
       <div 
-        className="card-glass relative w-full max-w-md rounded-3xl p-6 sm:p-8 border border-parrot-500/40 shadow-glow-md bg-dark-900/95"
+        className="relative w-full max-w-md rounded-2xl border border-border-green bg-card-elevated p-6 sm:p-8 shadow-card-soft"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-xl bg-dark-800 text-slate-400 hover:text-white hover:bg-dark-750 transition-colors"
+          className="interactive absolute right-4 top-4 p-2 rounded-xl text-text-secondary hover:text-text-primary hover:bg-card transition-colors cursor-pointer"
+          aria-label="Close dialog"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Modal Header */}
-        <div className="flex items-center gap-3 mb-5">
-          <div className="flex items-center justify-center w-11 h-11 rounded-2xl bg-dark-800 border border-parrot-500/40 shadow-glow-sm">
-            <Sprout className="w-6 h-6 text-parrot-400" />
+        <div className="text-center space-y-2 mb-6">
+          <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-accent/10 border border-border-green text-accent mx-auto shadow-glow-sm">
+            <Sprout className="w-6 h-6 stroke-[2.2]" />
           </div>
-          <div>
-            <h3 className="text-xl font-bold text-white flex items-center gap-1.5">
-              <span className="font-bengali">অঙ্কুর</span>
-              <span className="text-parrot-400">AI</span> 🌱
-            </h3>
-            <p className="text-xs text-slate-400 font-medium">
-              {isRegister ? 'Create your farmer account' : 'Sign in to access your crop batches'}
-            </p>
-          </div>
+          <h3 className="text-xl sm:text-2xl font-bold font-bengali text-text-primary">
+            {isRegister ? t('auth_register_title') : t('auth_login_title')}
+          </h3>
+          <p className="text-sm sm:text-base text-text-secondary">
+            {t('brand_tagline')}
+          </p>
         </div>
 
-        {/* Error Alert Box */}
-        {error && (
-          <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2 animate-fadeIn">
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {/* GOOGLE SIGN IN BUTTON */}
-        <button
-          type="button"
-          onClick={handleGoogleSignIn}
-          disabled={isGoogleSubmitting || isSubmitting}
-          className="w-full py-3 px-4 rounded-xl bg-dark-800 hover:bg-dark-750 text-white font-bold text-sm border border-dark-700 hover:border-parrot-500/40 shadow-sm transition-all flex items-center justify-center gap-3 cursor-pointer disabled:opacity-60 mb-4"
-        >
-          {isGoogleSubmitting ? (
-            <>
-              <RefreshCw className="w-4 h-4 animate-spin text-parrot-400" />
-              <span>Connecting with Google...</span>
-            </>
-          ) : (
-            <>
-              {/* Google G Logo SVG */}
-              <svg className="w-5 h-5" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                />
-              </svg>
-              <span>Continue with Google</span>
-            </>
-          )}
-        </button>
-
-        {/* Divider */}
-        <div className="flex items-center gap-3 my-4">
-          <div className="flex-1 h-px bg-dark-800"></div>
-          <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-            or with email
-          </span>
-          <div className="flex-1 h-px bg-dark-800"></div>
-        </div>
-
-        {/* Switch Tabs (Sign In / Register) */}
-        <div className="flex rounded-xl bg-dark-800/80 p-1 mb-4 border border-dark-750">
+        {/* Tab Switcher: Sign In vs Register */}
+        <div className="flex rounded-xl bg-card border border-border-green p-1 mb-6">
           <button
             type="button"
             onClick={() => {
               setIsRegister(false);
               setError(null);
             }}
-            className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+            className={`interactive flex-1 py-2.5 rounded-lg text-sm sm:text-base font-semibold transition-all cursor-pointer ${
               !isRegister
-                ? 'bg-parrot-500 text-dark-950 font-bold shadow-glow-sm'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-accent text-text-on-accent font-bold shadow-glow-sm'
+                : 'text-text-secondary hover:text-text-primary'
             }`}
           >
-            Sign In (লগইন)
+            {t('auth_login_tab')}
           </button>
           <button
             type="button"
@@ -208,89 +168,135 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               setIsRegister(true);
               setError(null);
             }}
-            className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+            className={`interactive flex-1 py-2.5 rounded-lg text-sm sm:text-base font-semibold transition-all cursor-pointer ${
               isRegister
-                ? 'bg-parrot-500 text-dark-950 font-bold shadow-glow-sm'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-accent text-text-on-accent font-bold shadow-glow-sm'
+                : 'text-text-secondary hover:text-text-primary'
             }`}
           >
-            Register (নিবন্ধন)
+            {t('auth_register_tab')}
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-3.5">
+        {/* Error notification */}
+        {error && (
+          <div className="mb-4 p-3.5 rounded-xl border border-alert-warning/30 bg-alert-warning/10 text-alert-warning text-sm flex items-start gap-2.5">
+            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+            <span className="leading-snug">{error}</span>
+          </div>
+        )}
+
+        {/* Google Sign In Button */}
+        <button
+          type="button"
+          onClick={handleGoogleSignIn}
+          disabled={isGoogleSubmitting || isSubmitting}
+          className="interactive btn-secondary w-full h-12 text-sm sm:text-base font-semibold mb-5 flex items-center justify-center gap-3"
+        >
+          {isGoogleSubmitting ? (
+            <RefreshCw className="w-5 h-5 animate-spin" />
+          ) : (
+            <svg className="w-5 h-5" viewBox="0 0 24 24">
+              <path
+                fill="#4285F4"
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+              />
+            </svg>
+          )}
+          <span>{t('auth_google')}</span>
+        </button>
+
+        {/* Divider */}
+        <div className="relative my-4">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-border-green" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-card-elevated px-3 text-text-secondary font-mono">
+              {t('auth_or_email')}
+            </span>
+          </div>
+        </div>
+
+        {/* Email & Password Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
           {isRegister && (
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Full Name / খামারির নাম
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-text-secondary flex items-center gap-2">
+                <User className="w-4 h-4 text-accent" />
+                <span>{t('auth_name_label')}</span>
               </label>
-              <div className="relative">
-                <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. মোঃ রফিকুল ইসলাম"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-dark-950 border border-dark-750 focus:border-parrot-400 focus:ring-1 focus:ring-parrot-400 text-sm text-white placeholder-slate-500 outline-none transition-all"
-                />
-              </div>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t('auth_name_placeholder')}
+                className="w-full px-4 py-3 rounded-xl bg-card border border-border-green text-base text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:border-accent"
+              />
             </div>
           )}
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Email Address / ইমেইল
+          <div className="space-y-1.5">
+            <label className="text-sm font-semibold text-text-secondary flex items-center gap-2">
+              <Mail className="w-4 h-4 text-accent" />
+              <span>{t('auth_email_label')}</span>
             </label>
-            <div className="relative">
-              <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="farmer@example.com"
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-dark-950 border border-dark-750 focus:border-parrot-400 focus:ring-1 focus:ring-parrot-400 text-sm text-white placeholder-slate-500 outline-none transition-all"
-              />
-            </div>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={t('auth_email_placeholder')}
+              required
+              className="w-full px-4 py-3 rounded-xl bg-card border border-border-green text-base text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:border-accent"
+            />
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Password / পাসওয়ার্ড
+          <div className="space-y-1.5">
+            <label className="text-sm font-semibold text-text-secondary flex items-center gap-2">
+              <Lock className="w-4 h-4 text-accent" />
+              <span>{t('auth_password_label')}</span>
             </label>
-            <div className="relative">
-              <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
-              <input
-                type="password"
-                required
-                minLength={6}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Minimum 6 characters"
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-dark-950 border border-dark-750 focus:border-parrot-400 focus:ring-1 focus:ring-parrot-400 text-sm text-white placeholder-slate-500 outline-none transition-all"
-              />
-            </div>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder={t('auth_password_placeholder')}
+              required
+              className="w-full px-4 py-3 rounded-xl bg-card border border-border-green text-base text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:border-accent"
+            />
           </div>
 
-          <button
-            type="submit"
-            disabled={isSubmitting || isGoogleSubmitting}
-            className="w-full py-3 rounded-xl font-bold text-sm bg-parrot-500 hover:bg-parrot-400 text-dark-950 shadow-glow-sm hover:shadow-glow-md transition-all flex items-center justify-center gap-2 mt-2 disabled:opacity-60 cursor-pointer"
-          >
-            {isSubmitting ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Signing in...</span>
-              </>
-            ) : (
-              <>
-                <span>{isRegister ? 'Create Account' : 'Sign In'}</span>
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </button>
+          <div className="pt-2">
+            <button
+              type="submit"
+              disabled={isSubmitting || isGoogleSubmitting}
+              className="btn-primary w-full"
+            >
+              {isSubmitting ? (
+                <>
+                  <RefreshCw className="w-5 h-5 animate-spin" />
+                  <span>{t('auth_submitting')}</span>
+                </>
+              ) : (
+                <>
+                  <span>{isRegister ? t('auth_submit_register') : t('auth_submit_login')}</span>
+                  <ArrowRight className="w-5 h-5" />
+                </>
+              )}
+            </button>
+          </div>
         </form>
 
       </div>

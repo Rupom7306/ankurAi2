@@ -8,53 +8,65 @@ export default {
   theme: {
     extend: {
       colors: {
-        dark: {
-          950: '#070B0A',
-          900: '#0B100E',
-          850: '#101614',
-          800: '#141D1A',
-          750: '#1A2521',
-          700: '#202E29',
-          600: '#2C3E37',
-          500: '#3D544B',
+        bg: {
+          DEFAULT: '#0A1210',
         },
-        parrot: {
-          50: '#F0FDF4',
-          100: '#DCFCE7',
-          200: '#BBF7D0',
-          300: '#86EFAC',
-          400: '#4ADE80',
-          500: '#16E05C', // Vibrant parrot green
-          600: '#10B94E',
-          700: '#0B8F3C',
-          800: '#0D7032',
-          900: '#0D5C2C',
-          950: '#043416',
+        card: {
+          DEFAULT: '#111C17',
+          elevated: '#16241E',
+        },
+        'border-green': 'rgba(74, 222, 128, 0.18)',
+        'border-header': 'rgba(74, 222, 128, 0.18)',
+        text: {
+          primary: '#F1F6F3',
+          secondary: '#B4C6BC',
+          'on-accent': '#08110D',
         },
         accent: {
-          amber: '#F59E0B',
-          cyan: '#06B6D4',
-          crimson: '#EF4444',
-          emerald: '#10B981',
-        }
+          DEFAULT: '#4ADE80',
+          hover: '#6EE7A0',
+          muted: 'rgba(74, 222, 128, 0.14)',
+        },
+        olive: {
+          DEFAULT: '#A8B52A',
+          soft: 'rgba(168, 181, 42, 0.35)',
+          faint: 'rgba(168, 181, 42, 0.12)',
+        },
+        pill: {
+          critical: {
+            text: '#FCA5A5',
+            bg: 'rgba(239, 68, 68, 0.18)',
+            border: 'rgba(239, 68, 68, 0.35)',
+          },
+          caution: {
+            text: '#FCD34D',
+            bg: 'rgba(245, 158, 11, 0.18)',
+            border: 'rgba(245, 158, 11, 0.35)',
+          },
+          good: {
+            text: '#86EFAC',
+            bg: 'rgba(74, 222, 128, 0.18)',
+            border: 'rgba(74, 222, 128, 0.35)',
+          },
+        },
+      },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        bengali: ['"Hind Siliguri"', 'Inter', 'sans-serif'],
+      },
+      borderRadius: {
+        DEFAULT: '14px',
+        sm: '8px',
+        md: '12px',
+        lg: '14px',
+        xl: '14px',
+        '2xl': '16px',
       },
       boxShadow: {
-        'glow-sm': '0 0 12px rgba(22, 224, 92, 0.25)',
-        'glow-md': '0 0 24px rgba(22, 224, 92, 0.35)',
-        'glow-lg': '0 0 40px rgba(22, 224, 92, 0.45)',
-        'glow-danger': '0 0 24px rgba(239, 68, 68, 0.4)',
-        'glow-warning': '0 0 24px rgba(245, 158, 11, 0.4)',
-        'inner-glow': 'inset 0 0 15px rgba(22, 224, 92, 0.15)',
-      },
-      animation: {
-        'pulse-subtle': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'glow-pulse': 'glowPulse 2.5s ease-in-out infinite',
-      },
-      keyframes: {
-        glowPulse: {
-          '0%, 100%': { opacity: '0.4' },
-          '50%': { opacity: '0.85' },
-        }
+        glow: '0 0 18px rgba(74, 222, 128, 0.25)',
+        'glow-sm': '0 0 10px rgba(74, 222, 128, 0.15)',
+        'olive-glow': '0 0 0 1px #A8B52A, 0 0 22px rgba(168, 181, 42, 0.35)',
+        'card-soft': '0 4px 24px -2px rgba(0, 0, 0, 0.45)',
       }
     },
   },

@@ -17,25 +17,28 @@ export type BatchPriority = 'Critical' | 'High' | 'Moderate' | 'Low';
 export interface CropBatch {
   id: string;
   userId: string;
-  batchName: string;
+  name: string; // Batch name e.g. "West 102"
+  batchName?: string; // Backwards-compatible alias
   cropType: string;
   variety?: string;
   plantingDate: string;
-  farmLocation: {
+  sectionKey: string;
+  sensors: string[]; // e.g. ["N", "P", "K", "humidity"]
+  sensorStatus: 'online' | 'offline'; // default "offline"
+  farmLocation?: {
     name: string;
     latitude?: number;
     longitude?: number;
   };
-  sensorSetId: string;
-  growthStage: GrowthStage;
-  healthScore: number; // 0 - 100%
-  condition: HealthCondition;
-  priority: BatchPriority;
-  activeIssuesCount: number;
+  growthStage?: GrowthStage;
+  healthScore?: number; // 0 - 100%
+  condition?: HealthCondition;
+  priority?: BatchPriority;
+  activeIssuesCount?: number;
   qrCodeUrl?: string;
   lastScannedAt?: string;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 }
 
 export interface SensorReading {

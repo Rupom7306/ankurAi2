@@ -2,57 +2,152 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color-scheme: dark;
+  --bg: #0A1210;
+  --card: #111C17;
+  --card-elevated: #16241E;
+  --border-green: rgba(74, 222, 128, 0.18);
+  --border-header: rgba(74, 222, 128, 0.18);
+  --accent: #4ADE80;
+  --accent-hover: #6EE7A0;
+  --text-primary: #F1F6F3;
+  --text-secondary: #B4C6BC;
+  --text-on-accent: #08110D;
+  --olive: #A8B52A;
+  --olive-soft: rgba(168, 181, 42, 0.35);
+  --olive-faint: rgba(168, 181, 42, 0.12);
+}
+
 @layer base {
   body {
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #0A1210;
+    background-image: radial-gradient(circle 900px at 50% -120px, rgba(74, 222, 128, 0.08), transparent 75%);
+    background-attachment: fixed;
+    color: #F1F6F3;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
   }
   
+  html[lang="bn"] body {
+    font-family: 'Hind Siliguri', 'Inter', sans-serif;
+    line-height: 1.7;
+    font-size: 16px;
+  }
+
+  @media (max-width: 640px) {
+    html[lang="bn"] body {
+      font-size: 18px;
+    }
+  }
+
   .font-bengali {
-    font-family: 'Hind Siliguri', 'Plus Jakarta Sans', sans-serif;
+    font-family: 'Hind Siliguri', 'Inter', sans-serif;
+    line-height: 1.7;
+  }
+
+  /* Keyboard focus visible outline */
+  :focus-visible {
+    outline: 2px solid var(--olive);
+    outline-offset: 2px;
   }
 }
 
-/* Custom Scrollbars */
+/* Interactive Olive Glow Utility */
+.interactive {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+
+.interactive:hover, .interactive:focus-visible {
+  border-color: var(--olive) !important;
+  box-shadow: 0 0 0 1px var(--olive), 0 0 22px var(--olive-soft) !important;
+  background-color: var(--olive-faint);
+  transform: translateY(-1px);
+}
+
+/* Primary Green Button with Olive Glow Ring on Hover */
+.btn-primary {
+  min-height: 52px;
+  padding-left: 24px;
+  padding-right: 24px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 12px;
+  background-color: var(--accent);
+  color: var(--text-on-accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: box-shadow 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .btn-primary {
+    min-height: 56px;
+  }
+}
+
+.btn-primary:hover, .btn-primary:focus-visible {
+  background-color: var(--accent-hover);
+  box-shadow: 0 0 0 2px var(--olive), 0 0 24px var(--olive-soft) !important;
+  transform: translateY(-1px);
+}
+
+/* Outlined Secondary Button */
+.btn-secondary {
+  min-height: 44px;
+  padding-left: 20px;
+  padding-right: 20px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 12px;
+  border: 1px solid var(--border-green);
+  background-color: transparent;
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  cursor: pointer;
+}
+
+.btn-secondary:hover, .btn-secondary:focus-visible {
+  border-color: var(--olive) !important;
+  color: var(--accent);
+  background-color: var(--olive-faint);
+  box-shadow: 0 0 0 1px var(--olive), 0 0 20px var(--olive-soft) !important;
+  transform: translateY(-1px);
+}
+
+/* Reduced Motion Override */
+@media (prefers-reduced-motion: reduce) {
+  .interactive:hover, .interactive:focus-visible,
+  .btn-primary:hover, .btn-primary:focus-visible,
+  .btn-secondary:hover, .btn-secondary:focus-visible {
+    transform: none !important;
+  }
+}
+
+/* Scrollbars */
 ::-webkit-scrollbar {
   width: 7px;
   height: 7px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0B100E;
+  background: #0A1210;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #202E29;
+  background: rgba(74, 222, 128, 0.25);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #16E05C;
-}
-
-/* Modern Card Glass & Glow Utilities */
-.card-glass {
-  background: linear-gradient(135deg, rgba(20, 29, 26, 0.75) 0%, rgba(11, 16, 14, 0.85) 100%);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(44, 62, 55, 0.6);
-}
-
-.card-glass-glow {
-  background: linear-gradient(135deg, rgba(20, 29, 26, 0.85) 0%, rgba(11, 16, 14, 0.95) 100%);
-  backdrop-filter: blur(14px);
-  border: 1px solid rgba(22, 224, 92, 0.25);
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5), 0 0 15px -3px rgba(22, 224, 92, 0.15);
-}
-
-.border-glow-hover:hover {
-  border-color: rgba(22, 224, 92, 0.6);
-  box-shadow: 0 0 20px rgba(22, 224, 92, 0.25);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.text-gradient-parrot {
-  background: linear-gradient(135deg, #A7F3C4 0%, #16E05C 50%, #08C353 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  background: rgba(168, 181, 42, 0.4);
 }

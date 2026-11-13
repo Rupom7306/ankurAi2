@@ -1,72 +1,146 @@
-import React from 'react';
-import { Sprout, Plus, LogIn, LogOut } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Sprout, LogIn, LogOut, User as UserIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
 interface NavbarProps {
-  onOpenNewBatchModal?: () => void;
   onLoginClick?: () => void;
+  onOpenProfile?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
-  onOpenNewBatchModal,
   onLoginClick,
+  onOpenProfile,
 }) => {
   const { currentUser, logoutUser } = useAuth();
+  const { lang, setLang, t } = useLanguage();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const displayName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Farmer';
   const initial = displayName.charAt(0).toUpperCase();
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-dark-800 bg-dark-950/90 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-18 flex items-center justify-between">
+    <header className="sticky top-0 z-30 w-full border-b border-border-header bg-bg/95 backdrop-blur-md">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
         
-        {/* Minimal Brand Identity */}
-        <div className="flex items-center gap-2.5">
-          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-dark-900 border border-parrot-500/30 text-parrot-400">
-            <Sprout className="w-5 h-5" />
+        {/* Brand: Always reads "অঙ্কুর AI" with "AI" in parrot green in both languages */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-accent/10 border border-border-green text-accent shadow-glow-sm">
+            <Sprout className="w-6 h-6 stroke-[2.2]" />
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-xl font-bold font-bengali text-white">অঙ্কুর</span>
-            <span className="text-xl font-extrabold text-parrot-400 tracking-wide">AI</span>
-            <span className="text-base">🌱</span>
+          <div className="flex items-baseline gap-1.5 select-none">
+            <span className="text-2xl sm:text-3xl font-extrabold font-bengali text-text-primary tracking-normal">
+              অঙ্কুর
+            </span>
+            <span className="text-2xl sm:text-3xl font-black text-accent tracking-wide">
+              AI
+            </span>
           </div>
         </div>
 
-        {/* Right side: Action & Login */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onOpenNewBatchModal}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold bg-dark-900 hover:bg-dark-850 text-slate-200 border border-dark-750 hover:border-parrot-500/40 transition-all"
-          >
-            <Plus className="w-4 h-4 text-parrot-400" />
-            <span>New Batch</span>
-          </button>
+        {/* Right side: Language Segmented Control & User Action */}
+        <div className="flex items-center gap-3 sm:gap-4">
+          
+          {/* Clear Segmented Control: বাংলা | English (min 44px tall, active filled green) */}
+          <div className="flex items-center h-11 p-1 rounded-xl border border-border-green bg-card select-none">
+            <button
+              type="button"
+              onClick={() => setLang('bn')}
+              className={`h-full px-3.5 sm:px-4 rounded-lg text-sm sm:text-base font-semibold transition-all cursor-pointer flex items-center justify-center ${
+                lang === 'bn'
+                  ? 'bg-accent text-text-on-accent font-bold shadow-glow-sm'
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+              aria-pressed={lang === 'bn'}
+            >
+              বাংলা
+            </button>
+            <button
+              type="button"
+              onClick={() => setLang('en')}
+              className={`h-full px-3.5 sm:px-4 rounded-lg text-sm sm:text-base font-semibold transition-all cursor-pointer flex items-center justify-center ${
+                lang === 'en'
+                  ? 'bg-accent text-text-on-accent font-bold shadow-glow-sm'
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+              aria-pressed={lang === 'en'}
+            >
+              English
+            </button>
+          </div>
 
+          {/* User Auth Action */}
           {currentUser ? (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-dark-900 border border-parrot-500/30 text-xs text-white">
-                <span className="w-6 h-6 rounded-lg bg-parrot-500/20 text-parrot-400 flex items-center justify-center font-bold">
+            <div className="relative" ref={menuRef}>
+              <button
+                type="button"
+                onClick={() => setIsMenuOpen((prev) => !prev)}
+                className="interactive h-11 min-w-[48px] px-3.5 sm:px-4 rounded-xl border border-border-green bg-card text-text-primary flex items-center gap-2.5 cursor-pointer"
+                aria-expanded={isMenuOpen}
+              >
+                <span className="w-6 h-6 rounded-full bg-accent/20 text-accent flex items-center justify-center font-bold text-xs">
                   {initial}
                 </span>
-                <span className="font-semibold truncate max-w-[120px]">{displayName}</span>
-              </div>
-              <button
-                onClick={() => logoutUser()}
-                title="Sign Out"
-                className="p-2 rounded-xl bg-dark-900 hover:bg-dark-850 text-slate-400 hover:text-rose-400 border border-dark-800 transition-colors"
-              >
-                <LogOut className="w-4 h-4" />
+                <span className="font-semibold text-sm sm:text-base truncate max-w-[120px] hidden md:inline">
+                  {displayName}
+                </span>
               </button>
+
+              {isMenuOpen && (
+                <div className="absolute right-0 mt-2 w-52 rounded-xl border border-border-green bg-card-elevated shadow-card-soft py-1.5 z-40">
+                  <div className="px-4 py-2 border-b border-border-green text-xs text-text-secondary truncate font-mono">
+                    {currentUser.email}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      if (onOpenProfile) onOpenProfile();
+                    }}
+                    className="w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-sm sm:text-base text-text-primary hover:bg-card hover:text-accent transition-colors cursor-pointer"
+                  >
+                    <UserIcon className="w-4 h-4 text-text-secondary" />
+                    <span>{t('nav_profile')}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      logoutUser();
+                    }}
+                    className="w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-sm sm:text-base text-text-secondary hover:text-alert-warning hover:bg-card transition-colors cursor-pointer"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>{t('nav_logout')}</span>
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <button
+              type="button"
               onClick={onLoginClick}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-parrot-500 hover:bg-parrot-400 text-dark-950 shadow-glow-sm hover:shadow-glow-md transition-all cursor-pointer"
+              className="interactive h-11 px-5 rounded-xl border border-border-green bg-card hover:border-accent text-accent hover:text-accent font-semibold text-sm sm:text-base flex items-center gap-2 cursor-pointer transition-all"
             >
               <LogIn className="w-4 h-4" />
-              <span>Login</span>
+              <span>{t('nav_login')}</span>
             </button>
           )}
+
         </div>
 
       </div>

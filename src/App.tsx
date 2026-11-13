@@ -1,260 +1,208 @@
 import React, { useState } from 'react';
 import { AuthProvider } from './context/AuthContext';
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { Navbar } from './components/Navbar';
 import { AuthModal } from './components/AuthModal';
-import { ImageCaptureHero } from './components/ImageCaptureHero';
-import { MetricsOverview } from './components/MetricsOverview';
-import { BatchCardPreview } from './components/BatchCardPreview';
-import { RoadmapView } from './components/RoadmapView';
-import { CropBatch, SensorReading } from './types';
-import { ArrowRight } from 'lucide-react';
+import { ScanHero } from './components/ScanHero';
+import { BatchSelector } from './components/BatchSelector';
+import { CreateBatchModal } from './components/CreateBatchModal';
+import { SensorDataUploader } from './components/SensorDataUploader';
+import { ResultReport } from './components/ResultReport';
+import { ProfilePage } from './pages/ProfilePage';
+import { CropBatch } from './types';
+import { ParsedSensorRow } from './lib/excelParser';
+import { WeatherData, CropWeatherEvaluation, fetchWeatherByCoords, evaluateCropWeather, detectUserLocation } from './lib/weather';
+import { PestDiagnosisResult, diagnoseCropImage } from './lib/geminiDiagnosis';
+import { BatchAnalysisResult, runFullAnalysis } from './lib/scoring';
+import { RefreshCw } from 'lucide-react';
 
 export const MainContent: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'batches' | 'roadmap'>('dashboard');
+  const { lang, t } = useLanguage();
+  const [currentView, setCurrentView] = useState<'scan' | 'profile'>('scan');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isCreateBatchModalOpen, setIsCreateBatchModalOpen] = useState(false);
 
-  // Sample Mock Batches
-  const mockBatches: CropBatch[] = [
-    {
-      id: 'batch-c47a98',
-      userId: 'user-001',
-      batchName: 'Paddy Block A (BRRI Dhan-28)',
-      cropType: 'Boro Rice',
-      variety: 'BRRI dhan28',
-      plantingDate: '2026-10-15',
-      farmLocation: {
-        name: 'Mymensingh Ag Farm, Sector 3',
-        latitude: 24.7471,
-        longitude: 90.4203,
-      },
-      sensorSetId: 'SEN-SET-901',
-      growthStage: 'Vegetative',
-      healthScore: 92,
-      condition: 'Excellent',
-      priority: 'Low',
-      activeIssuesCount: 0,
-      createdAt: '2026-10-15T08:00:00Z',
-      updatedAt: '2026-11-13T06:00:00Z',
-    },
-    {
-      id: 'batch-f81b22',
-      userId: 'user-001',
-      batchName: 'Wheat Field South (BARI Gom-33)',
-      cropType: 'Wheat',
-      variety: 'BARI Gom-33',
-      plantingDate: '2026-10-28',
-      farmLocation: {
-        name: 'Rajshahi Plot 7',
-        latitude: 24.3745,
-        longitude: 88.6042,
-      },
-      sensorSetId: 'SEN-SET-404',
-      growthStage: 'Seedling',
-      healthScore: 68,
-      condition: 'At Risk',
-      priority: 'High',
-      activeIssuesCount: 2,
-      createdAt: '2026-10-28T09:30:00Z',
-      updatedAt: '2026-11-13T05:45:00Z',
-    },
-    {
-      id: 'batch-d12e55',
-      userId: 'user-001',
-      batchName: 'Mustard Plot Alpha (Tori-7)',
-      cropType: 'Mustard',
-      variety: 'Tori-7 Oilseed',
-      plantingDate: '2026-11-01',
-      farmLocation: {
-        name: 'Bogura Fields',
-        latitude: 24.8465,
-        longitude: 89.3777,
-      },
-      sensorSetId: 'SEN-SET-202',
-      growthStage: 'Germination',
-      healthScore: 84,
-      condition: 'Healthy',
-      priority: 'Moderate',
-      activeIssuesCount: 0,
-      createdAt: '2026-11-01T07:15:00Z',
-      updatedAt: '2026-11-13T04:20:00Z',
-    },
-  ];
+  // Workflow states
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedBatch, setSelectedBatch] = useState<CropBatch | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  // Live Telemetry snapshot
-  const mockSensors: Record<string, SensorReading> = {
-    'batch-c47a98': {
-      id: 'read-001',
-      sensorSetId: 'SEN-SET-901',
-      timestamp: '2026-11-13T05:50:00Z',
-      nitrogen: 145,
-      phosphorus: 38,
-      potassium: 195,
-      soilHumidity: 68,
-      soilTemperature: 24.8,
-    },
-    'batch-f81b22': {
-      id: 'read-002',
-      sensorSetId: 'SEN-SET-404',
-      timestamp: '2026-11-13T05:50:00Z',
-      nitrogen: 88,
-      phosphorus: 24,
-      potassium: 140,
-      soilHumidity: 42,
-      soilTemperature: 27.2,
-    },
-    'batch-d12e55': {
-      id: 'read-003',
-      sensorSetId: 'SEN-SET-202',
-      timestamp: '2026-11-13T05:50:00Z',
-      nitrogen: 130,
-      phosphorus: 42,
-      potassium: 180,
-      soilHumidity: 62,
-      soilTemperature: 23.5,
-    },
+  // Completed analysis state
+  const [finalReport, setFinalReport] = useState<{
+    analysis: BatchAnalysisResult;
+    weather: WeatherData;
+    weatherEval: CropWeatherEvaluation;
+    pestVerdict: PestDiagnosisResult;
+  } | null>(null);
+
+  const handleImageSelected = (dataUrl: string) => {
+    setSelectedImage(dataUrl);
+    setSelectedBatch(null);
+    setFinalReport(null);
+  };
+
+  const handleImageCleared = () => {
+    setSelectedImage(null);
+    setSelectedBatch(null);
+    setFinalReport(null);
+  };
+
+  const handleBatchSelected = (batch: CropBatch) => {
+    setSelectedBatch(batch);
+  };
+
+  // Triggered when Excel / CSV sensor data is uploaded
+  const handleSensorDataParsed = async (data: {
+    allRows: ParsedSensorRow[];
+    batchRows: ParsedSensorRow[];
+    detectedSections: string[];
+  }) => {
+    if (!selectedBatch || !selectedImage) return;
+
+    setIsAnalyzing(true);
+
+    try {
+      // 1. Location & Weather (Dynamic GPS / IP location with Chattogram fallback)
+      let weatherData: WeatherData;
+      try {
+        const detectedLoc = await detectUserLocation();
+        weatherData = await fetchWeatherByCoords(
+          detectedLoc.lat,
+          detectedLoc.lon,
+          detectedLoc.locationName
+        );
+      } catch (e) {
+        console.warn('Weather fetch fallback:', e);
+        weatherData = {
+          locationName: {
+            en: 'Chattogram Agriculture Region',
+            bn: 'চট্টগ্রাম কৃষি অঞ্চল',
+          },
+          latitude: 22.3569,
+          longitude: 91.7832,
+          current: { temperature: 26.5, humidity: 72, precipitation: 0, weatherCode: 1, windSpeed: 7 },
+          dailyForecast: [],
+        };
+      }
+
+      const weatherEval = evaluateCropWeather(weatherData, selectedBatch.cropType);
+
+      // 2. Pest & Disease Diagnosis via secure Gemini API endpoint (Phase 6.4)
+      const pestVerdict = await diagnoseCropImage(selectedImage, selectedBatch.cropType);
+
+      // 3. Scoring & Ranking engine (Phase 6.1, 6.2, 6.3)
+      const analysisResult = runFullAnalysis(
+        selectedBatch.sectionKey,
+        selectedBatch.cropType,
+        data.allRows,
+        weatherEval.riskLabel,
+        pestVerdict.severity
+      );
+
+      setFinalReport({
+        analysis: analysisResult,
+        weather: weatherData,
+        weatherEval,
+        pestVerdict,
+      });
+    } catch (err) {
+      console.error('Analysis error:', err);
+      alert(lang === 'bn' ? 'বিশ্লেষণ সম্পন্ন করতে সমস্যা হয়েছে।' : 'Failed to complete analysis.');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleResetToHome = () => {
+    setSelectedImage(null);
+    setSelectedBatch(null);
+    setFinalReport(null);
+    setCurrentView('scan');
   };
 
   return (
-    <div className="min-h-screen bg-dark-950 text-slate-100 flex flex-col font-sans selection:bg-parrot-500/20 selection:text-parrot-300">
-      {/* Top Navbar with Real Firebase Authentication */}
+    <div className="min-h-screen bg-bg text-text-primary flex flex-col font-sans selection:bg-accent/20 selection:text-accent">
+      {/* Slim Header: logo in green-tinted square, "অঙ্কুর AI", language toggle, green outlined Login */}
       <Navbar
-        onOpenNewBatchModal={() => alert("Batch registration will be enabled in Phase 3.")}
         onLoginClick={() => setIsAuthModalOpen(true)}
+        onOpenProfile={() => setCurrentView('profile')}
       />
 
-      {/* Auth Modal Triggered by Login button */}
+      {/* Auth Modal Triggered by Login button or protected action */}
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
       />
 
+      {/* Create / Register Batch Modal */}
+      <CreateBatchModal
+        isOpen={isCreateBatchModalOpen}
+        onClose={() => setIsCreateBatchModalOpen(false)}
+        onBatchCreated={(batchId) => {
+          console.log('Batch created:', batchId);
+        }}
+      />
+
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        
-        {/* Sleek Tab Navigation */}
-        <div className="flex items-center justify-between border-b border-dark-800 pb-3">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
-                activeTab === 'dashboard'
-                  ? 'bg-parrot-500 text-dark-950 font-bold'
-                  : 'text-slate-400 hover:text-white hover:bg-dark-900'
-              }`}
-            >
-              Dashboard
-            </button>
-            <button
-              onClick={() => setActiveTab('batches')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
-                activeTab === 'batches'
-                  ? 'bg-parrot-500 text-dark-950 font-bold'
-                  : 'text-slate-400 hover:text-white hover:bg-dark-900'
-              }`}
-            >
-              Batches ({mockBatches.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('roadmap')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
-                activeTab === 'roadmap'
-                  ? 'bg-parrot-500 text-dark-950 font-bold'
-                  : 'text-slate-400 hover:text-white hover:bg-dark-900'
-              }`}
-            >
-              Roadmap
-            </button>
-          </div>
-        </div>
-
-        {/* Tab 1: Minimalist Dashboard */}
-        {activeTab === 'dashboard' && (
-          <div className="space-y-8">
-            
-            {/* IN MIDDLE: DOTTED ROUNDED RECTANGLE WITH TWO LARGE SQUARE BUTTONS & POST-PHOTO QR BINDING */}
-            <ImageCaptureHero />
-
-            {/* Clean Metrics Overview */}
-            <MetricsOverview
-              totalBatches={mockBatches.length}
-              healthyBatches={mockBatches.filter((b) => b.condition === 'Excellent' || b.condition === 'Healthy').length}
-              atRiskBatches={mockBatches.filter((b) => b.condition === 'At Risk').length}
-              criticalBatches={mockBatches.filter((b) => b.condition === 'Critical').length}
-            />
-
-            {/* Monitored Crop Batches */}
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-bold text-white">Crop Batches</h3>
-                <button
-                  onClick={() => setActiveTab('batches')}
-                  className="flex items-center gap-1 text-xs font-semibold text-parrot-400 hover:text-parrot-300"
-                >
-                  <span>View All</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {mockBatches.slice(0, 2).map((batch) => (
-                  <BatchCardPreview
-                    key={batch.id}
-                    batch={batch}
-                    sensorData={mockSensors[batch.id]}
-                    onSelectBatch={(id) => alert(`Batch ${id} selected.`)}
-                    onScanClick={(b) => alert(`QR for ${b.batchName}`)}
-                  />
-                ))}
-              </div>
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 pt-8 pb-16 sm:pt-12 sm:pb-24 flex flex-col items-center justify-center">
+        {currentView === 'profile' ? (
+          <ProfilePage onBackToHome={() => setCurrentView('scan')} />
+        ) : isAnalyzing ? (
+          /* Analyzing Loader State */
+          <div className="rounded-2xl border border-border-green bg-card p-10 sm:p-14 text-center max-w-md mx-auto space-y-4 shadow-card-soft animate-fadeIn">
+            <div className="w-16 h-16 rounded-full bg-accent/15 border border-border-green text-accent flex items-center justify-center mx-auto shadow-glow">
+              <RefreshCw className="w-8 h-8 animate-spin stroke-[2.2]" />
             </div>
-
-          </div>
-        )}
-
-        {/* Tab 2: Crop Batches View */}
-        {activeTab === 'batches' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-white">Monitored Crop Batches</h2>
-              <button
-                onClick={() => alert("Batch registration modal will be enabled in Phase 3.")}
-                className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-parrot-500 hover:bg-parrot-400 text-dark-950 transition-all"
-              >
-                + New Batch
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {mockBatches.map((batch) => (
-                <BatchCardPreview
-                  key={batch.id}
-                  batch={batch}
-                  sensorData={mockSensors[batch.id]}
-                  onSelectBatch={(id) => alert(`Batch ${id} selected.`)}
-                  onScanClick={(b) => alert(`QR for ${b.batchName}`)}
-                />
-              ))}
+            <div className="space-y-2">
+              <h3 className="text-xl sm:text-2xl font-bold font-bengali text-text-primary">
+                {t('analysis_loading_title')}
+              </h3>
+              <p className="text-base text-text-secondary leading-relaxed">
+                {t('analysis_loading_desc')}
+              </p>
             </div>
           </div>
+        ) : finalReport && selectedBatch && selectedImage ? (
+          /* Phase 7: Comprehensive Scannable Result Page */
+          <ResultReport
+            batch={selectedBatch}
+            cropImage={selectedImage}
+            analysis={finalReport.analysis}
+            weather={finalReport.weather}
+            weatherEval={finalReport.weatherEval}
+            pestVerdict={finalReport.pestVerdict}
+            onResetToHome={handleResetToHome}
+          />
+        ) : !selectedImage ? (
+          /* Step 1: Calm Scan Drop Area */
+          <ScanHero onImageSelected={handleImageSelected} />
+        ) : !selectedBatch ? (
+          /* Step 2: Crop Photo Preview & Batch Selection */
+          <BatchSelector
+            selectedImage={selectedImage}
+            onImageCleared={handleImageCleared}
+            onBatchSelected={handleBatchSelected}
+            onOpenCreateBatch={() => setIsCreateBatchModalOpen(true)}
+            onRequireLogin={() => setIsAuthModalOpen(true)}
+          />
+        ) : (
+          /* Step 3: Excel/CSV Sensor Data Upload */
+          <SensorDataUploader
+            selectedBatch={selectedBatch}
+            onDataParsed={handleSensorDataParsed}
+            onBack={() => setSelectedBatch(null)}
+          />
         )}
-
-        {/* Tab 3: Roadmap View */}
-        {activeTab === 'roadmap' && (
-          <RoadmapView />
-        )}
-
       </main>
 
-      {/* Minimal Footer */}
-      <footer className="border-t border-dark-900 bg-dark-950 py-4 text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-          <div className="flex items-center gap-1.5 text-slate-400">
-            <span className="font-bengali text-parrot-400 font-bold">অঙ্কুর</span>
-            <span className="text-parrot-400 font-bold">AI</span> 🌱
-          </div>
-          <div className="text-[11px] font-mono text-slate-500">
-            Phase 2: Firebase Auth Connected
-          </div>
+      {/* Tiny one-line copyright footer with green-tinted border */}
+      <footer className="border-t border-border-header py-4 text-center text-sm text-text-secondary">
+        <div className="max-w-5xl mx-auto px-4 flex items-center justify-center gap-2">
+          <span>&copy; {new Date().getFullYear()}</span>
+          <span className="font-bengali font-bold text-text-primary">{t('brand_name')}</span>
+          <span className="text-accent font-extrabold">{t('brand_ai')}</span>
+          <span className="text-border-green">&bull;</span>
+          <span className="font-bengali text-text-secondary">{t('brand_tagline')}</span>
         </div>
       </footer>
     </div>
@@ -263,9 +211,11 @@ export const MainContent: React.FC = () => {
 
 export const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <MainContent />
-    </AuthProvider>
+    <LanguageProvider>
+      <AuthProvider>
+        <MainContent />
+      </AuthProvider>
+    </LanguageProvider>
   );
 };
 
