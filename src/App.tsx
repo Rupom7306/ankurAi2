@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Navbar } from './components/Navbar';
+import { AuthModal } from './components/AuthModal';
+import { ImageCaptureHero } from './components/ImageCaptureHero';
 import { MetricsOverview } from './components/MetricsOverview';
 import { GrowthStageVisualizer } from './components/GrowthStageVisualizer';
 import { BatchCardPreview } from './components/BatchCardPreview';
@@ -15,6 +17,10 @@ import {
 export const App: React.FC = () => {
   const [selectedGrowthStage, setSelectedGrowthStage] = useState<GrowthStage>('Vegetative');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'batches' | 'roadmap'>('dashboard');
+
+  // User Authentication State
+  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // Sample Mock Batches showcasing the design and data model
   const mockBatches: CropBatch[] = [
@@ -119,25 +125,34 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-dark-950 text-slate-100 flex flex-col font-sans selection:bg-parrot-500/20 selection:text-parrot-300">
-      {/* Top Navbar */}
+      {/* Top Navbar with TOP-RIGHT LOGIN BUTTON */}
       <Navbar
         onOpenNewBatchModal={() => alert("Batch registration form will be activated in Phase 3 after Firebase setup.")}
         onOpenScanModal={() => alert("QR and Plant scanning camera will be activated in Phases 5 & 6.")}
+        onLoginClick={() => setIsAuthModalOpen(true)}
+        user={user}
+        onLogout={() => setUser(null)}
+      />
+
+      {/* Auth Modal Triggered by Login button */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onLoginSuccess={(userData) => setUser(userData)}
       />
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         
-        {/* Hero Section */}
+        {/* Top Hero Section */}
         <div className="relative overflow-hidden rounded-3xl p-6 sm:p-10 card-glass-glow border border-parrot-500/30">
-          {/* Subtle background glow circles */}
           <div className="absolute top-0 right-0 -mt-12 -mr-12 w-96 h-96 bg-parrot-500/10 rounded-full blur-3xl pointer-events-none"></div>
           <div className="absolute bottom-0 left-1/3 -mb-20 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
           <div className="relative z-10 max-w-3xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-parrot-500/10 border border-parrot-500/20 text-parrot-400 text-xs font-semibold mb-4">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Phase 1 Initialized — Dark Charcoal & Parrot-Green Theme</span>
+              <span>Smart Precision Agriculture Platform</span>
             </div>
 
             <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
@@ -193,6 +208,9 @@ export const App: React.FC = () => {
         {/* Dynamic Views Based on Active Tab */}
         {activeTab === 'dashboard' && (
           <>
+            {/* IN MIDDLE: NOTICEABLE BIG BUTTON (CAPTURE CROP IMAGE OR UPLOAD IMAGE) */}
+            <ImageCaptureHero />
+
             {/* KPI Metrics Overview */}
             <MetricsOverview
               totalBatches={mockBatches.length}
@@ -201,7 +219,7 @@ export const App: React.FC = () => {
               criticalBatches={mockBatches.filter((b) => b.condition === 'Critical').length}
             />
 
-            {/* Growth Stage Visualizer Demo & Interactive Selector */}
+            {/* Growth Stage Visualizer Demo & Interactive Selector (FIXED LINE OVER BOXES) */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1.5">
@@ -227,7 +245,10 @@ export const App: React.FC = () => {
                 </div>
               </div>
 
-              <GrowthStageVisualizer currentStage={selectedGrowthStage} />
+              <GrowthStageVisualizer 
+                currentStage={selectedGrowthStage} 
+                onSelectStage={(stage) => setSelectedGrowthStage(stage)}
+              />
             </div>
 
             {/* Active Crop Batches Preview Grid */}
@@ -262,7 +283,7 @@ export const App: React.FC = () => {
               </div>
             </div>
 
-            {/* Beginner-Friendly Architecture & Tech Stack Card */}
+            {/* Architecture Card */}
             <div className="card-glass rounded-2xl p-6 sm:p-8 border border-dark-750">
               <div className="flex items-center gap-2 mb-4">
                 <Database className="w-5 h-5 text-parrot-400" />
