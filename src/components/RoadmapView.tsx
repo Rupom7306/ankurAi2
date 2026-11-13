@@ -30,15 +30,15 @@ export const RoadmapView: React.FC = () => {
       phase: 2,
       title: 'Firebase Setup & Authentication',
       bengali: 'ফায়ারবেস ও ইউজার লগইন',
-      status: 'next',
+      status: 'completed',
       icon: Key,
-      summary: 'Firebase Auth setup, user registration, login, logout, and protected session state.',
+      summary: 'Firebase Auth connected: Live registration, login, logout, and user session state.',
     },
     {
       phase: 3,
       title: 'Firestore Database & Crop Batch Registration',
       bengali: 'ফসল ব্যাচ নিবন্ধন ও ডাটাবেস',
-      status: 'pending',
+      status: 'next',
       icon: Database,
       summary: '9 Firestore collections, batch registration form with crop type, date, sensor sets, location.',
     },
@@ -132,7 +132,7 @@ export const RoadmapView: React.FC = () => {
         </div>
 
         <div className="text-xs font-mono px-3 py-1.5 rounded-xl bg-dark-900 border border-dark-750 text-slate-300">
-          Current: <strong className="text-parrot-400">Phase 1 Complete</strong>
+          Current: <strong className="text-parrot-400">Phase 2 Complete • Phase 3 Next</strong>
         </div>
       </div>
 

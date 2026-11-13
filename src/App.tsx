@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AuthProvider } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { AuthModal } from './components/AuthModal';
 import { ImageCaptureHero } from './components/ImageCaptureHero';
@@ -8,11 +9,8 @@ import { RoadmapView } from './components/RoadmapView';
 import { CropBatch, SensorReading } from './types';
 import { ArrowRight } from 'lucide-react';
 
-export const App: React.FC = () => {
+export const MainContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'batches' | 'roadmap'>('dashboard');
-
-  // User Authentication State
-  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // Sample Mock Batches
@@ -118,19 +116,16 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-dark-950 text-slate-100 flex flex-col font-sans selection:bg-parrot-500/20 selection:text-parrot-300">
-      {/* Top Navbar with Minimalist Branding & Top-Right Login Button */}
+      {/* Top Navbar with Real Firebase Authentication */}
       <Navbar
         onOpenNewBatchModal={() => alert("Batch registration will be enabled in Phase 3.")}
         onLoginClick={() => setIsAuthModalOpen(true)}
-        user={user}
-        onLogout={() => setUser(null)}
       />
 
       {/* Auth Modal Triggered by Login button */}
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
-        onLoginSuccess={(userData) => setUser(userData)}
       />
 
       {/* Main Container */}
@@ -176,7 +171,7 @@ export const App: React.FC = () => {
         {activeTab === 'dashboard' && (
           <div className="space-y-8">
             
-            {/* IN MIDDLE: DOTTED ROUNDED RECTANGLE WITH TWO LARGE SQUARE BUTTONS (CAMERA & UPLOAD) */}
+            {/* IN MIDDLE: DOTTED ROUNDED RECTANGLE WITH TWO LARGE SQUARE BUTTONS & POST-PHOTO QR BINDING */}
             <ImageCaptureHero />
 
             {/* Clean Metrics Overview */}
@@ -258,11 +253,19 @@ export const App: React.FC = () => {
             <span className="text-parrot-400 font-bold">AI</span> 🌱
           </div>
           <div className="text-[11px] font-mono text-slate-500">
-            Phase 1 Foundation • Ready for Phase 2
+            Phase 2: Firebase Auth Connected
           </div>
         </div>
       </footer>
     </div>
+  );
+};
+
+export const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <MainContent />
+    </AuthProvider>
   );
 };
 
