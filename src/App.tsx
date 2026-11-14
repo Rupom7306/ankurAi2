@@ -96,7 +96,8 @@ export const MainContent: React.FC = () => {
         selectedBatch.cropType,
         data.allRows,
         weatherEval.riskLabel,
-        pestVerdict.severity
+        pestVerdict.severity,
+        pestVerdict.isCropOrPlant
       );
 
       setFinalReport({
@@ -172,6 +173,10 @@ export const MainContent: React.FC = () => {
             weatherEval={finalReport.weatherEval}
             pestVerdict={finalReport.pestVerdict}
             onResetToHome={handleResetToHome}
+            onChangeImage={() => {
+              setSelectedImage(null);
+              setFinalReport(null);
+            }}
           />
         ) : !selectedImage ? (
           /* Step 1: Calm Scan Drop Area */

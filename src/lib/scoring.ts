@@ -4,19 +4,28 @@ import { TranslationKey } from '../i18n';
 
 export type HealthLevel = 'Critical' | 'Poor' | 'Fair' | 'Good' | 'Excellent';
 
+export type TriggerSource =
+  | 'soil_depletion'
+  | 'foliar_disease'
+  | 'weather_stress'
+  | 'both'
+  | 'balanced'
+  | 'sensor_only'
+  | 'insufficient_data';
+
 export interface ScoreBreakdown {
   npkScore: number; // 0 - 40
   humidityScore: number; // 0 - 20
   trendScore: number; // 0 - 25
   weatherPenalty: number; // 0 - 10
   pestPenalty: number; // 0 - 15
-  totalScore: number; // 0 - 100
+  totalScore: number | null; // 0 - 100 or null if insufficient
 }
 
 export interface SectionHealthSummary {
   sectionKey: string;
   cropType: string;
-  totalScore: number;
+  totalScore: number | null;
   level: HealthLevel;
   levelKey: TranslationKey;
   levelColor: string;
@@ -32,6 +41,9 @@ export interface SectionHealthSummary {
 
 export interface BatchAnalysisResult {
   batchSectionKey: string;
+  hasSufficientSensorData: boolean;
+  triggerSource: TriggerSource;
+  synthesisKey: TranslationKey;
   level: HealthLevel;
   levelKey: TranslationKey;
   levelColor: string;
@@ -53,7 +65,7 @@ export interface BatchAnalysisResult {
   sectionRanking: SectionHealthSummary[];
   batchRank: number;
   totalSectionsCount: number;
-  averageHealthScore: number;
+  averageHealthScore: number | null;
 }
 
 const getLevelMeta = (score: number): { level: HealthLevel; levelKey: TranslationKey; color: string } => {
@@ -72,18 +84,43 @@ export const calculateSectionHealth = (
   rows: ParsedSensorRow[],
   cropType = 'Boro Rice',
   weatherRisk: 'Low' | 'Moderate' | 'High' = 'Low',
-  pestSeverity: 'none' | 'low' | 'medium' | 'high' = 'none'
-): { score: number; level: HealthLevel; levelKey: TranslationKey; levelColor: string; problemKey: TranslationKey; breakdown: ScoreBreakdown; nRate: number; pRate: number; kRate: number } => {
+  pestSeverity: 'none' | 'low' | 'medium' | 'high' = 'none',
+  isCropOrPlant = true
+): {
+  score: number | null;
+  level: HealthLevel;
+  levelKey: TranslationKey;
+  levelColor: string;
+  problemKey: TranslationKey;
+  synthesisKey: TranslationKey;
+  triggerSource: TriggerSource;
+  hasSufficientSensorData: boolean;
+  breakdown: ScoreBreakdown;
+  nRate: number;
+  pRate: number;
+  kRate: number;
+} => {
   const profile = getCropProfile(cropType);
 
+  // If there is zero sensor data, do NOT invent arbitrary numbers
   if (rows.length === 0) {
     return {
-      score: 50,
+      score: null,
       level: 'Fair',
-      levelKey: 'level_fair',
+      levelKey: 'problem_insufficient_data',
       levelColor: '#F59E0B',
       problemKey: 'problem_insufficient_data',
-      breakdown: { npkScore: 20, humidityScore: 10, trendScore: 15, weatherPenalty: 0, pestPenalty: 0, totalScore: 50 },
+      synthesisKey: 'problem_insufficient_data',
+      triggerSource: 'insufficient_data',
+      hasSufficientSensorData: false,
+      breakdown: {
+        npkScore: 0,
+        humidityScore: 0,
+        trendScore: 0,
+        weatherPenalty: 0,
+        pestPenalty: 0,
+        totalScore: null,
+      },
       nRate: 0,
       pRate: 0,
       kRate: 0,
@@ -169,15 +206,45 @@ export const calculateSectionHealth = (
 
   trendPoints = Math.max(0, trendPoints);
 
-  // 4. Weather & Pest Penalties
+  // 4. Weather & Pest Penalties (strictly only penalized if verified plant image!)
   const weatherPenalty = weatherRisk === 'High' ? 10 : weatherRisk === 'Moderate' ? 5 : 0;
-  const pestPenalty =
-    pestSeverity === 'high' ? 15 : pestSeverity === 'medium' ? 10 : pestSeverity === 'low' ? 4 : 0;
+  const pestPenalty = isCropOrPlant
+    ? (pestSeverity === 'high' ? 15 : pestSeverity === 'medium' ? 10 : pestSeverity === 'low' ? 4 : 0)
+    : 0;
 
   const rawTotal = npkPoints + humidityPoints + trendPoints - weatherPenalty - pestPenalty;
-  const totalScore = Math.max(15, Math.min(98, rawTotal));
+  const totalScore = Math.max(10, Math.min(98, rawTotal));
 
   const { level, levelKey, color } = getLevelMeta(totalScore);
+
+  // 5. Synthesize correlation to eliminate contradictory conclusions
+  let triggerSource: TriggerSource = 'balanced';
+  let synthesisKey: TranslationKey = 'synthesis_balanced';
+
+  if (!isCropOrPlant) {
+    triggerSource = 'sensor_only';
+    synthesisKey = 'synthesis_non_crop';
+  } else if (rawTotal < 60) {
+    if (npkPoints + trendPoints < 35 && pestPenalty === 0) {
+      triggerSource = 'soil_depletion';
+      synthesisKey = 'synthesis_soil_critical_leaf_healthy';
+    } else if (pestPenalty >= 10 && npkPoints + trendPoints >= 45) {
+      triggerSource = 'foliar_disease';
+      synthesisKey = 'synthesis_soil_ok_leaf_diseased';
+    } else if (pestPenalty >= 10 && npkPoints + trendPoints < 40) {
+      triggerSource = 'both';
+      synthesisKey = 'synthesis_both_critical';
+    } else if (weatherPenalty >= 5) {
+      triggerSource = 'weather_stress';
+      synthesisKey = 'synthesis_soil_critical_leaf_healthy';
+    } else {
+      triggerSource = 'soil_depletion';
+      synthesisKey = 'synthesis_soil_critical_leaf_healthy';
+    }
+  } else {
+    triggerSource = 'balanced';
+    synthesisKey = 'synthesis_balanced';
+  }
 
   return {
     score: totalScore,
@@ -185,6 +252,9 @@ export const calculateSectionHealth = (
     levelKey,
     levelColor: color,
     problemKey: detectedProblemKey,
+    synthesisKey,
+    triggerSource,
+    hasSufficientSensorData: true,
     breakdown: {
       npkScore: npkPoints,
       humidityScore: humidityPoints,
@@ -207,7 +277,8 @@ export const runFullAnalysis = (
   selectedCropType: string,
   allRows: ParsedSensorRow[],
   weatherRisk: 'Low' | 'Moderate' | 'High' = 'Low',
-  pestSeverity: 'none' | 'low' | 'medium' | 'high' = 'none'
+  pestSeverity: 'none' | 'low' | 'medium' | 'high' = 'none',
+  isCropOrPlant = true
 ): BatchAnalysisResult => {
   // Group rows by section
   const sectionGroups: Record<string, ParsedSensorRow[]> = {};
@@ -230,7 +301,8 @@ export const runFullAnalysis = (
       sRows,
       sectionCrop,
       isSelected ? weatherRisk : 'Low',
-      isSelected ? pestSeverity : 'none'
+      isSelected ? pestSeverity : 'none',
+      isSelected ? isCropOrPlant : true
     );
 
     const nRows = sRows.filter((r) => r.nitrogen !== null);
@@ -257,10 +329,10 @@ export const runFullAnalysis = (
   });
 
   // Rank so the batch needing the MOST attention is at the TOP (lowest score first)
-  sectionSummaries.sort((a, b) => a.totalScore - b.totalScore);
+  sectionSummaries.sort((a, b) => (a.totalScore ?? 0) - (b.totalScore ?? 0));
 
   const targetKeyNorm = selectedSectionKey.toLowerCase();
-  const batchRank = sectionSummaries.findIndex((s) => s.sectionKey === targetKeyNorm) + 1;
+  const batchRank = Math.max(1, sectionSummaries.findIndex((s) => s.sectionKey === targetKeyNorm) + 1);
 
   // Selected batch detailed analysis
   const targetRows = sectionGroups[targetKeyNorm] || [];
@@ -271,12 +343,14 @@ export const runFullAnalysis = (
     targetRows,
     selectedCropType,
     weatherRisk,
-    pestSeverity
+    pestSeverity,
+    isCropOrPlant
   );
 
-  const avgScore = Math.round(
-    sectionSummaries.reduce((acc, s) => acc + s.totalScore, 0) / Math.max(1, sectionSummaries.length)
-  );
+  const validScores = sectionSummaries.filter((s) => s.totalScore !== null).map((s) => s.totalScore!);
+  const avgScore = validScores.length > 0
+    ? Math.round(validScores.reduce((acc, s) => acc + s, 0) / validScores.length)
+    : null;
 
   let fastestDrop: 'nitrogen' | 'phosphorus' | 'potassium' | 'none' = 'none';
   if (targetAnalysis.nRate < targetAnalysis.pRate && targetAnalysis.nRate < targetAnalysis.kRate && targetAnalysis.nRate < -3) {
@@ -289,6 +363,9 @@ export const runFullAnalysis = (
 
   return {
     batchSectionKey: selectedSectionKey,
+    hasSufficientSensorData: targetAnalysis.hasSufficientSensorData,
+    triggerSource: targetAnalysis.triggerSource,
+    synthesisKey: targetAnalysis.synthesisKey,
     level: targetAnalysis.level,
     levelKey: targetAnalysis.levelKey,
     levelColor: targetAnalysis.levelColor,
@@ -308,8 +385,8 @@ export const runFullAnalysis = (
       fastestDepleting: fastestDrop,
     },
     sectionRanking: sectionSummaries,
-    batchRank: Math.max(1, batchRank),
-    totalSectionsCount: sectionSummaries.length,
+    batchRank,
+    totalSectionsCount: Math.max(1, sectionSummaries.length),
     averageHealthScore: avgScore,
   };
 };

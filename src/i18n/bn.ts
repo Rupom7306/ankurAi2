@@ -250,4 +250,39 @@ export const bn = {
   unit_rows: 'সারি',
   unit_pts: 'পয়েন্ট',
   unit_week: 'সপ্তাহ',
+  unit_na: 'প্রযোজ্য নয়',
+
+  // Non-crop image rejection & validation
+  non_crop_alert_title: 'অকৃষি / অনুপযুক্ত ছবি সনাক্ত হয়েছে',
+  non_crop_alert_desc: 'আপলোড করা ছবিটি {subject} হিসেবে সনাক্ত হয়েছে। এতে কোনো ফসলের পাতা বা গাছ নেই। পাতার রোগ নির্ণয় বাদ দেওয়া হয়েছে।',
+  btn_reupload_crop_image: 'সঠিক ফসলের ছবি আপলোড করুন',
+  non_crop_badge: 'অনুপযুক্ত ছবি',
+
+  // Crop vitality & trigger distinctions (prevents contradiction)
+  vitality_title: 'সম্মিলিত শস্য স্বাস্থ্য সূচক',
+  vitality_trigger_soil: 'মাটির সেন্সর দ্বারা সতর্কবার্তা',
+  vitality_trigger_foliar: 'পাতার রোগ দ্বারা সতর্কবার্তা',
+  vitality_trigger_both: 'মাটি ও পাতা উভয় দিকেই ঝুঁকি',
+  vitality_trigger_sensor_only: 'শুধুমাত্র মাটির সেন্সর ভিত্তিক',
+  vitality_trigger_balanced: 'মাটি ও পাতা উভয়ই সুস্থ',
+  vitality_trigger_insufficient: 'অপর্যাপ্ত তথ্য',
+
+  // Synthesized explainers connecting soil and foliage
+  synthesis_soil_critical_leaf_healthy: 'প্রাথমিক সতর্কবার্তা: মাটির সেন্সরে পুষ্টির তীব্র ঘাটতি দেখা গেছে, তবে পাতায় এখনও রোগের ক্ষত সৃষ্টি হয়নি। পাতায় ক্ষতি প্রকাশের আগেই সার প্রয়োগ করুন।',
+  synthesis_soil_ok_leaf_diseased: 'পাতার রোগ সতর্কবার্তা: মাটিতে পুষ্টি উপাদান সন্তোষজনক হলেও পাতায় সক্রিয় রোগের লক্ষণ দেখা গেছে। দ্রুত বালাইনাশক ব্যবস্থা গ্রহণ করুন।',
+  synthesis_both_critical: 'যৌগিক ঝুঁকি: মাটি ও পাতা উভয় ক্ষেত্রেই তীব্র প্রতিকূলতা দেখা গেছে। অবিলম্বে সমন্বিত ব্যবস্থা গ্রহণ করুন।',
+  synthesis_non_crop: 'শুধুমাত্র সেন্সর ভিত্তিক: মাটির সেন্সর ডেটা বিশ্লেষণ করা হয়েছে। আপলোড করা ছবিটি ফসলের না হওয়ায় পাতার স্বাস্থ্য যাচাই করা সম্ভব হয়নি।',
+  synthesis_balanced: 'অনুকূল অবস্থা: মাটির পুষ্টি ও পাতার স্বাস্থ্য উভয়ই সন্তোষজনক ও স্বাভাবিক রয়েছে।',
+
+  // Foliar diagnosis statuses & observations
+  pest_status_healthy: 'সুস্থ পাতা',
+  pest_status_diseased: 'পাতার রোগ সনাক্ত হয়েছে',
+  pest_status_non_crop: 'অনুপযুক্ত ছবি',
+  pest_status_low_quality: 'অপর্যাপ্ত ভিজ্যুয়াল প্রমাণ',
+  visual_observations_title: 'সরাসরি দৃশ্যমান লক্ষণসমূহ',
+  ai_hypothesis_badge: 'সম্ভাব্য এআই ধারণা',
+  ai_confidence_label: 'ভিজ্যুয়াল নির্ভুলতা',
+  uncertainty_badge: 'কম নির্ভুলতা (অনিশ্চিত)',
+  image_quality_blurry: 'ছবিটি ঝাপসা বা আলো কম হওয়ায় সুনির্দিষ্ট ক্ষত নির্ণয় করা সম্ভব হয়নি।',
+  status_insufficient_sensor: 'অপর্যাপ্ত সেন্সর তথ্য',
 };

@@ -24,7 +24,10 @@ import {
   RefreshCw, 
   Award,
   Calendar,
-  Activity
+  Activity,
+  AlertTriangle,
+  Camera,
+  Info
 } from 'lucide-react';
 import { CropBatch } from '../types';
 import { BatchAnalysisResult } from '../lib/scoring';
@@ -43,6 +46,7 @@ interface ResultReportProps {
   weatherEval: CropWeatherEvaluation;
   pestVerdict: PestDiagnosisResult;
   onResetToHome: () => void;
+  onChangeImage?: () => void;
 }
 
 const getCropTranslationKey = (crop: string): TranslationKey => {
@@ -70,6 +74,7 @@ export const ResultReport: React.FC<ResultReportProps> = ({
   weatherEval,
   pestVerdict,
   onResetToHome,
+  onChangeImage,
 }) => {
   const { t, lang, formatNumber } = useLanguage();
   const { currentUser } = useAuth();
@@ -92,9 +97,10 @@ export const ResultReport: React.FC<ResultReportProps> = ({
         healthLevel: analysis.level,
         healthScore: analysis.scoreBreakdown.totalScore,
         pestVerdict: {
+          isCropOrPlant: pestVerdict.isCropOrPlant,
           detected: pestVerdict.pestDetected,
           disease: pestVerdict.pestOrDisease.en,
-          confidence: pestVerdict.confidence,
+          confidence: pestVerdict.diagnosisConfidence,
           severity: pestVerdict.severity,
         },
         location: typeof weather.locationName === 'object' ? weather.locationName[lang] || weather.locationName.en : weather.locationName,
@@ -138,35 +144,52 @@ export const ResultReport: React.FC<ResultReportProps> = ({
   const getStatusPillClasses = (level: string) => {
     switch (level) {
       case 'Critical':
-        return 'bg-red-500/18 text-[#FCA5A5] border-red-500/35';
+        return 'bg-red-500/20 text-[#FCA5A5] border border-red-500/40 font-bold';
       case 'Poor':
-        return 'bg-amber-500/18 text-[#FCD34D] border-amber-500/35';
+        return 'bg-amber-500/20 text-[#FCD34D] border border-amber-500/40 font-bold';
       case 'Fair':
-        return 'bg-yellow-500/18 text-[#FDE047] border-yellow-500/35';
+        return 'bg-yellow-500/20 text-[#FDE047] border border-yellow-500/40 font-bold';
       case 'Good':
       case 'Excellent':
       default:
-        return 'bg-emerald-500/18 text-[#86EFAC] border-emerald-500/35';
+        return 'bg-emerald-500/20 text-[#86EFAC] border border-emerald-500/40 font-bold';
+    }
+  };
+
+  const getTriggerSourceBadgeText = (trigger: string) => {
+    switch (trigger) {
+      case 'soil_depletion':
+        return t('vitality_trigger_soil');
+      case 'foliar_disease':
+        return t('vitality_trigger_foliar');
+      case 'both':
+        return t('vitality_trigger_both');
+      case 'sensor_only':
+        return t('vitality_trigger_sensor_only');
+      case 'insufficient_data':
+        return t('vitality_trigger_insufficient');
+      default:
+        return t('vitality_trigger_balanced');
     }
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-7 animate-fadeIn pb-20">
+    <div className="w-full max-w-4xl mx-auto space-y-6 sm:space-y-7 animate-fadeIn pb-24">
       
-      {/* Top Bar: Back button and Save action (min 44px height, 16px font) */}
-      <div className="flex items-center justify-between gap-4 pb-4 border-b border-border-header">
+      {/* Top Action Bar */}
+      <div className="flex items-center justify-between gap-3 pb-4 border-b border-border-header">
         <button
           onClick={onResetToHome}
-          className="interactive btn-secondary h-12 px-5 text-sm sm:text-base font-semibold"
+          className="interactive btn-secondary h-11 sm:h-12 px-4 sm:px-5 text-sm sm:text-base font-semibold"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
           <span>{t('result_btn_new_scan')}</span>
         </button>
 
         <button
           onClick={handleSaveAnalysis}
           disabled={isSaving || saveSuccess}
-          className={`interactive h-12 px-6 rounded-xl font-bold text-sm sm:text-base transition-all flex items-center gap-2.5 cursor-pointer ${
+          className={`interactive h-11 sm:h-12 px-5 sm:px-6 rounded-xl font-bold text-sm sm:text-base transition-all flex items-center gap-2 cursor-pointer ${
             saveSuccess
               ? 'bg-accent/20 border border-accent text-accent'
               : 'btn-primary'
@@ -174,56 +197,94 @@ export const ResultReport: React.FC<ResultReportProps> = ({
         >
           {isSaving ? (
             <>
-              <RefreshCw className="w-5 h-5 animate-spin" />
+              <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
               <span>{t('result_saving')}</span>
             </>
           ) : saveSuccess ? (
             <>
-              <Check className="w-5 h-5 stroke-[3]" />
+              <Check className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
               <span>{t('result_saved')}</span>
             </>
           ) : (
             <>
-              <Bookmark className="w-5 h-5" />
+              <Bookmark className="w-4 h-4 sm:w-5 sm:h-5" />
               <span>{t('result_btn_save')}</span>
             </>
           )}
         </button>
       </div>
 
+      {/* NON-AGRICULTURAL IMAGE WARNING BANNER (Shows only if uploaded image is not a plant) */}
+      {!pestVerdict.isCropOrPlant && (
+        <div className="rounded-2xl border-2 border-alert-warning/50 bg-alert-warning/10 p-5 sm:p-6 shadow-card-soft animate-fadeIn flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-alert-warning/20 text-alert-warning flex items-center justify-center shrink-0 border border-alert-warning/40">
+              <AlertTriangle className="w-6 h-6 stroke-[2.2]" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-base sm:text-lg font-bold text-text-primary">
+                  {t('non_crop_alert_title')}
+                </h3>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-alert-warning/20 text-alert-warning border border-alert-warning/35">
+                  {pestVerdict.detectedSubject}
+                </span>
+              </div>
+              <p className="text-sm sm:text-base text-text-secondary leading-relaxed">
+                {pestVerdict.rejectionReason?.[lang] ||
+                  pestVerdict.rejectionReason?.en ||
+                  t('non_crop_alert_desc', { subject: pestVerdict.detectedSubject })}
+              </p>
+            </div>
+          </div>
+
+          {onChangeImage && (
+            <button
+              onClick={onChangeImage}
+              className="btn-primary h-11 px-5 text-sm shrink-0 whitespace-nowrap self-end sm:self-auto"
+            >
+              <Camera className="w-4 h-4" />
+              <span>{t('btn_reupload_crop_image')}</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* 1. Header: Batch Meta & Location / Weather Snapshot */}
-      <div className="rounded-2xl border border-border-green bg-card p-6 sm:p-7 shadow-card-soft flex flex-col md:flex-row md:items-center justify-between gap-5">
+      <div className="rounded-2xl border border-border-green bg-card p-5 sm:p-7 shadow-card-soft flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-5">
         <div>
-          <div className="flex items-center gap-2.5 mb-2">
-            <span className="font-mono text-sm px-2.5 py-1 rounded-md bg-bg text-accent border border-border-green font-bold">
+          <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
+            <span className="font-mono text-xs sm:text-sm px-2.5 py-1 rounded-md bg-bg text-accent border border-border-green font-bold">
               {batch.sectionKey}
             </span>
-            <span className="text-sm text-text-secondary flex items-center gap-1.5">
-              <Calendar className="w-4 h-4" />
+            <span className="text-xs sm:text-sm text-text-secondary flex items-center gap-1.5">
+              <Calendar className="w-4 h-4 text-accent" />
               <span>{t('result_planted_on')} {batch.plantingDate}</span>
             </span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-bold font-bengali text-text-primary">
             {batch.name}
           </h2>
-          <p className="text-base text-accent font-semibold mt-1">
+          <p className="text-sm sm:text-base text-accent font-semibold mt-0.5">
             {t(cropKey)} {batch.variety ? `• ${batch.variety}` : ''}
           </p>
         </div>
 
         {/* Weather capsule */}
-        <div className="flex items-center gap-4 p-4 rounded-xl bg-card-elevated border border-border-green self-start md:self-auto">
+        <div className="flex items-center gap-3.5 p-3.5 sm:p-4 rounded-xl bg-card-elevated border border-border-green self-start md:self-auto">
           <CloudSun className="w-8 h-8 text-accent shrink-0" />
-          <div className="text-sm sm:text-base">
-            <div className="flex items-center gap-2.5">
-              <strong className="text-text-primary">
+          <div className="text-xs sm:text-sm">
+            <div className="flex items-center gap-2">
+              <strong className="text-text-primary font-semibold">
                 {typeof weather.locationName === 'object'
                   ? weather.locationName[lang] || weather.locationName.en
                   : weather.locationName}
               </strong>
-              <span className="text-accent font-bold font-mono">{formatNumber(weather.current.temperature)}°C</span>
+              <span className="text-accent font-bold font-mono text-sm sm:text-base">
+                {formatNumber(weather.current.temperature)}°C
+              </span>
             </div>
-            <div className="text-sm text-text-secondary flex gap-3 mt-1">
+            <div className="text-text-secondary flex gap-3 mt-0.5">
               <span>{t('weather_humidity')}: {formatNumber(weather.current.humidity)}%</span>
               <span>{t('weather_precipitation')}: {formatNumber(weather.current.precipitation)}mm</span>
             </div>
@@ -231,137 +292,235 @@ export const ResultReport: React.FC<ResultReportProps> = ({
         </div>
       </div>
 
-      {/* 2. Health Level (Large & Clear) with 1-Sentence Plain Explainer */}
+      {/* 2. Overall Crop Vitality Index (Clearly Distinguishes Soil Telemetry vs Leaf Visuals) */}
       <div className="rounded-2xl border border-border-green bg-card p-6 sm:p-8 shadow-card-soft space-y-5">
         <div>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border-green">
+          {/* Card Top Row: Vitality Header & Score */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border-green">
             <div>
-              <span className="text-sm font-semibold uppercase tracking-wider text-text-secondary block mb-1">
-                {t('result_health_title')}
-              </span>
-              <div className="flex items-baseline gap-3.5 flex-wrap">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-text-secondary">
+                  {t('vitality_title')}
+                </span>
+                {/* Clear source trigger badge so user knows WHY it is Critical or Healthy */}
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-accent/15 text-accent border border-accent/30">
+                  {getTriggerSourceBadgeText(analysis.triggerSource)}
+                </span>
+              </div>
+
+              <div className="flex items-baseline gap-3 flex-wrap">
                 <h3 
                   className="text-3xl sm:text-4xl font-extrabold tracking-tight"
                   style={{ color: analysis.levelColor }}
                 >
-                  {t(analysis.levelKey)}
+                  {analysis.hasSufficientSensorData ? t(analysis.levelKey) : t('status_insufficient_sensor')}
                 </h3>
-                <span className="text-lg font-mono text-text-secondary">
-                  ({t('score_out_of_100', { score: analysis.scoreBreakdown.totalScore })})
+                <span className="text-base sm:text-lg font-mono text-text-secondary">
+                  {analysis.scoreBreakdown.totalScore !== null
+                    ? `(${t('score_out_of_100', { score: analysis.scoreBreakdown.totalScore })})`
+                    : `(${t('unit_na')})`}
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className={`px-4 py-2 rounded-xl text-sm font-bold border ${getStatusPillClasses(analysis.level)}`}>
-                {t(analysis.levelKey)}
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <span className={`px-4 py-2 rounded-xl text-sm ${getStatusPillClasses(analysis.level)}`}>
+                {analysis.hasSufficientSensorData ? t(analysis.levelKey) : t('status_insufficient_sensor')}
               </span>
             </div>
           </div>
 
-          {/* 1-sentence plain-language explainer */}
-          <p className="text-base text-text-secondary mt-3 font-normal leading-relaxed">
-            {t('health_section_explainer')}
-          </p>
+          {/* SYNTHESIZED EXPLAINER: Resolves contradiction between soil sensors and clean leaf */}
+          <div className="mt-4 p-4 rounded-xl bg-card-elevated border border-border-green space-y-2">
+            <div className="flex items-start gap-2.5">
+              <Info className="w-5 h-5 text-accent shrink-0 mt-0.5" />
+              <p className="text-sm sm:text-base text-text-primary leading-relaxed font-normal">
+                {t(analysis.synthesisKey)}
+              </p>
+            </div>
 
-          {/* One line summary diagnosis reason */}
-          <div className="mt-4 p-4 rounded-xl bg-card-elevated border border-border-green text-base text-text-primary font-medium leading-relaxed">
-            {t(analysis.problemKey)}
+            {/* Specific primary soil telemetry driver */}
+            {analysis.hasSufficientSensorData && (
+              <div className="pt-2 border-t border-border-green/50 text-xs sm:text-sm text-text-secondary flex items-center gap-2">
+                <span className="font-semibold text-accent">{t('result_health_title')}:</span>
+                <span className="text-text-primary font-medium">{t(analysis.problemKey)}</span>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Transparent Score Breakdown */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-border-green">
-          <div className="p-4 rounded-xl bg-card-elevated border border-border-green">
-            <span className="text-sm text-text-secondary block mb-1">{t('score_npk')}</span>
-            <strong className="text-text-primary font-mono text-base sm:text-lg">
-              {formatNumber(analysis.scoreBreakdown.npkScore)} / {formatNumber(40)}
-            </strong>
+        {/* Transparent Score Breakdown (Only if sufficient data exists) */}
+        {analysis.hasSufficientSensorData ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-border-green">
+            <div className="p-3.5 sm:p-4 rounded-xl bg-card-elevated border border-border-green">
+              <span className="text-xs sm:text-sm text-text-secondary block mb-1">{t('score_npk')}</span>
+              <strong className="text-text-primary font-mono text-base sm:text-lg">
+                {formatNumber(analysis.scoreBreakdown.npkScore)} / {formatNumber(40)}
+              </strong>
+            </div>
+            <div className="p-3.5 sm:p-4 rounded-xl bg-card-elevated border border-border-green">
+              <span className="text-xs sm:text-sm text-text-secondary block mb-1">{t('score_humidity')}</span>
+              <strong className="text-text-primary font-mono text-base sm:text-lg">
+                {formatNumber(analysis.scoreBreakdown.humidityScore)} / {formatNumber(20)}
+              </strong>
+            </div>
+            <div className="p-3.5 sm:p-4 rounded-xl bg-card-elevated border border-border-green">
+              <span className="text-xs sm:text-sm text-text-secondary block mb-1">{t('score_trend')}</span>
+              <strong className="text-text-primary font-mono text-base sm:text-lg">
+                {formatNumber(analysis.scoreBreakdown.trendScore)} / {formatNumber(25)}
+              </strong>
+            </div>
+            <div className="p-3.5 sm:p-4 rounded-xl bg-card-elevated border border-border-green">
+              <span className="text-xs sm:text-sm text-text-secondary block mb-1">{t('score_penalty')}</span>
+              <strong className="text-alert-warning font-mono text-base sm:text-lg">
+                {penaltyScore > 0 
+                  ? `-${formatNumber(penaltyScore)} ${t('unit_pts')}`
+                  : `0 ${t('unit_pts')}`}
+              </strong>
+            </div>
           </div>
-          <div className="p-4 rounded-xl bg-card-elevated border border-border-green">
-            <span className="text-sm text-text-secondary block mb-1">{t('score_humidity')}</span>
-            <strong className="text-text-primary font-mono text-base sm:text-lg">
-              {formatNumber(analysis.scoreBreakdown.humidityScore)} / {formatNumber(20)}
-            </strong>
+        ) : (
+          <div className="p-4 rounded-xl bg-card-elevated border border-alert-warning/30 text-alert-warning text-sm">
+            {t('problem_insufficient_data')}
           </div>
-          <div className="p-4 rounded-xl bg-card-elevated border border-border-green">
-            <span className="text-sm text-text-secondary block mb-1">{t('score_trend')}</span>
-            <strong className="text-text-primary font-mono text-base sm:text-lg">
-              {formatNumber(analysis.scoreBreakdown.trendScore)} / {formatNumber(25)}
-            </strong>
-          </div>
-          <div className="p-4 rounded-xl bg-card-elevated border border-border-green">
-            <span className="text-sm text-text-secondary block mb-1">{t('score_penalty')}</span>
-            <strong className="text-alert-warning font-mono text-base sm:text-lg">
-              {penaltyScore > 0 
-                ? `-${formatNumber(penaltyScore)} ${t('unit_pts')}`
-                : `0 ${t('unit_pts')}`}
-            </strong>
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* 3. Pest & Disease Verdict with Uploaded Image */}
+      {/* 3. Pest & Disease Diagnosis with Subject Validation */}
       <div className="rounded-2xl border border-border-green bg-card p-6 sm:p-8 shadow-card-soft space-y-5">
-        <div className="pb-4 border-b border-border-green">
-          <div className="flex items-center gap-3">
-            <ShieldAlert className="w-6 h-6 text-accent" />
-            <h3 className="text-xl sm:text-2xl font-bold text-text-primary font-bengali">
-              {t('pest_section_title')}
-            </h3>
+        <div className="pb-4 border-b border-border-green flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <ShieldAlert className="w-5 h-5 sm:w-6 sm:h-6 text-accent" />
+              <h3 className="text-xl sm:text-2xl font-bold text-text-primary font-bengali">
+                {t('pest_section_title')}
+              </h3>
+            </div>
+            <p className="text-sm sm:text-base text-text-secondary mt-1">
+              {t('pest_section_explainer')}
+            </p>
           </div>
-          <p className="text-base text-text-secondary mt-1">
-            {t('pest_section_explainer')}
-          </p>
+
+          {/* Quick change photo action */}
+          {onChangeImage && (
+            <button
+              onClick={onChangeImage}
+              className="interactive text-xs sm:text-sm text-accent hover:text-accent-hover font-semibold underline flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+            >
+              <Camera className="w-4 h-4" />
+              <span>{t('btn_change_photo')}</span>
+            </button>
+          )}
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-6 items-start">
+        <div className="flex flex-col sm:flex-row gap-5 sm:gap-6 items-start">
           {/* Uploaded Crop Image Thumbnail */}
           <div className="relative w-full sm:w-56 aspect-[4/3] rounded-2xl overflow-hidden border border-border-green bg-black shrink-0">
             <img
               src={cropImage}
-              alt="Analyzed crop sample"
+              alt="Analyzed subject"
               className="w-full h-full object-cover"
             />
+            {!pestVerdict.isCropOrPlant && (
+              <div className="absolute inset-0 bg-black/75 flex items-center justify-center p-3 text-center">
+                <span className="text-xs font-bold text-alert-warning px-2.5 py-1 rounded bg-black/80 border border-alert-warning/40">
+                  {t('non_crop_badge')}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Verdict details */}
-          <div className="flex-1 space-y-4">
-            <div className="flex items-center gap-3.5">
-              {pestVerdict.pestDetected ? (
-                <div className="w-9 h-9 rounded-full bg-alert-warning/20 text-alert-warning flex items-center justify-center shrink-0 border border-alert-warning/35">
-                  <ShieldAlert className="w-5 h-5" />
+          <div className="flex-1 space-y-4 w-full">
+            {/* If Non-Agricultural Subject Detected */}
+            {!pestVerdict.isCropOrPlant ? (
+              <div className="p-4 rounded-xl border border-alert-warning/40 bg-alert-warning/10 space-y-2">
+                <div className="flex items-center gap-2 text-alert-warning font-bold text-sm sm:text-base">
+                  <AlertTriangle className="w-5 h-5 shrink-0" />
+                  <span>{pestVerdict.detectedSubject} ({t('pest_status_non_crop')})</span>
                 </div>
-              ) : (
-                <div className="w-9 h-9 rounded-full bg-accent/20 text-accent flex items-center justify-center shrink-0 border border-accent/35">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-              )}
-              <div>
-                <h4 className="text-lg sm:text-xl font-bold text-text-primary">
-                  {pestVerdict.pestOrDisease[lang] || pestVerdict.pestOrDisease.en}
-                </h4>
-                <div className="flex items-center gap-3 text-sm text-text-secondary mt-1 flex-wrap">
-                  <span>{t('pest_confidence')}: <strong className="font-mono text-accent">{formatNumber(pestVerdict.confidence)}%</strong></span>
-                  <span>•</span>
-                  <span>{t('pest_severity')}: <strong className="text-text-primary">{t(`pest_severity_${pestVerdict.severity}` as TranslationKey)}</strong></span>
+                <p className="text-xs sm:text-sm text-text-primary leading-relaxed">
+                  {pestVerdict.rejectionReason?.[lang] || pestVerdict.rejectionReason?.en || t('non_crop_alert_desc', { subject: pestVerdict.detectedSubject })}
+                </p>
+                <div className="pt-1 text-xs text-text-secondary flex gap-4">
+                  <span>{t('pest_confidence')}: <strong className="font-mono text-text-primary">{t('unit_na')}</strong></span>
+                  <span>{t('pest_severity')}: <strong className="text-text-primary">{t('unit_na')}</strong></span>
                 </div>
               </div>
-            </div>
+            ) : (
+              /* Verified Plant Image Case */
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  {pestVerdict.pestDetected ? (
+                    <div className="w-10 h-10 rounded-full bg-alert-warning/20 text-alert-warning flex items-center justify-center shrink-0 border border-alert-warning/35 mt-0.5">
+                      <ShieldAlert className="w-5 h-5" />
+                    </div>
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-accent/20 text-accent flex items-center justify-center shrink-0 border border-accent/35 mt-0.5">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                  )}
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-lg sm:text-xl font-bold text-text-primary">
+                        {pestVerdict.pestOrDisease[lang] || pestVerdict.pestOrDisease.en}
+                      </h4>
+                      {pestVerdict.isHypothesisOnly && (
+                        <span className="px-2 py-0.5 rounded text-xs font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                          {t('ai_hypothesis_badge')}
+                        </span>
+                      )}
+                    </div>
 
-            {/* Recommendation */}
-            <div className="p-4 rounded-xl bg-card-elevated border border-border-green text-sm sm:text-base space-y-1">
-              <span className="text-sm text-accent font-bold block">
-                {t('pest_recommendation_label')}:
-              </span>
-              <p className="text-text-primary leading-relaxed font-normal">
-                {pestVerdict.recommendation[lang] || pestVerdict.recommendation.en}
-              </p>
-            </div>
+                    <div className="flex items-center gap-3 text-xs sm:text-sm text-text-secondary mt-1 flex-wrap">
+                      <span>
+                        {t('ai_confidence_label')}:{' '}
+                        <strong className="font-mono text-accent">
+                          {pestVerdict.diagnosisConfidence !== null
+                            ? `${formatNumber(pestVerdict.diagnosisConfidence)}%`
+                            : t('uncertainty_badge')}
+                        </strong>
+                      </span>
+                      <span>•</span>
+                      <span>
+                        {t('pest_severity')}:{' '}
+                        <strong className="text-text-primary capitalize">
+                          {t(`pest_severity_${pestVerdict.severity}` as TranslationKey)}
+                        </strong>
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
-            <p className="text-sm text-text-secondary italic">
-              * {t('pest_disclaimer')}
-            </p>
+                {/* Direct Visual Observations */}
+                {pestVerdict.visualObservations && (
+                  <div className="p-3.5 rounded-xl bg-card-elevated border border-border-green text-xs sm:text-sm space-y-1.5">
+                    <span className="font-semibold text-accent block">
+                      {t('visual_observations_title')}:
+                    </span>
+                    <ul className="list-disc list-inside space-y-1 text-text-primary leading-relaxed">
+                      {(pestVerdict.visualObservations[lang] || pestVerdict.visualObservations.en).map((obs: string, i: number) => (
+                        <li key={i}>{obs}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Actionable recommendation */}
+                <div className="p-4 rounded-xl bg-card-elevated border border-border-green text-sm sm:text-base space-y-1">
+                  <span className="text-xs sm:text-sm text-accent font-bold block">
+                    {t('pest_recommendation_label')}:
+                  </span>
+                  <p className="text-text-primary leading-relaxed font-normal">
+                    {pestVerdict.recommendation[lang] || pestVerdict.recommendation.en}
+                  </p>
+                </div>
+
+                <p className="text-xs text-text-secondary italic">
+                  * {t('pest_disclaimer')}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -371,21 +530,21 @@ export const ResultReport: React.FC<ResultReportProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border-green">
           <div>
             <div className="flex items-center gap-2.5">
-              <Activity className="w-6 h-6 text-accent" />
+              <Activity className="w-5 h-5 sm:w-6 sm:h-6 text-accent" />
               <h3 className="text-xl sm:text-2xl font-bold text-text-primary font-bengali">
                 {t('trends_section_title')}
               </h3>
             </div>
-            <p className="text-base text-text-secondary mt-1">
+            <p className="text-sm sm:text-base text-text-secondary mt-1">
               {t('trends_section_explainer')}
             </p>
           </div>
 
           {/* Toggle buttons */}
-          <div className="flex rounded-xl border border-border-green bg-card p-1">
+          <div className="flex rounded-xl border border-border-green bg-card p-1 self-start sm:self-auto">
             <button
               onClick={() => setActiveChartTab('npk')}
-              className={`interactive px-4 py-2 rounded-lg text-sm sm:text-base font-semibold transition-all cursor-pointer ${
+              className={`interactive px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
                 activeChartTab === 'npk'
                   ? 'bg-accent text-text-on-accent font-bold shadow-glow-sm'
                   : 'text-text-secondary hover:text-text-primary'
@@ -395,7 +554,7 @@ export const ResultReport: React.FC<ResultReportProps> = ({
             </button>
             <button
               onClick={() => setActiveChartTab('humidity')}
-              className={`interactive px-4 py-2 rounded-lg text-sm sm:text-base font-semibold transition-all cursor-pointer ${
+              className={`interactive px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
                 activeChartTab === 'humidity'
                   ? 'bg-accent text-text-on-accent font-bold shadow-glow-sm'
                   : 'text-text-secondary hover:text-text-primary'
@@ -412,8 +571,8 @@ export const ResultReport: React.FC<ResultReportProps> = ({
             {activeChartTab === 'npk' ? (
               <LineChart data={analysis.timelineData}>
                 <CartesianGrid stroke="rgba(74, 222, 128, 0.12)" strokeDasharray="3 3" />
-                <XAxis dataKey="date" stroke="#B4C6BC" fontSize={14} tickLine={false} />
-                <YAxis stroke="#B4C6BC" fontSize={14} tickLine={false} domain={['auto', 'auto']} />
+                <XAxis dataKey="date" stroke="#B4C6BC" fontSize={13} tickLine={false} />
+                <YAxis stroke="#B4C6BC" fontSize={13} tickLine={false} domain={['auto', 'auto']} />
                 <Tooltip 
                   contentStyle={{ 
                     backgroundColor: '#111C17', 
@@ -425,7 +584,7 @@ export const ResultReport: React.FC<ResultReportProps> = ({
                   }} 
                 />
                 <Legend 
-                  wrapperStyle={{ fontSize: '14px', color: '#B4C6BC', paddingTop: '10px' }} 
+                  wrapperStyle={{ fontSize: '13px', color: '#B4C6BC', paddingTop: '10px' }} 
                 />
                 <Line 
                   type="monotone" 
@@ -458,8 +617,8 @@ export const ResultReport: React.FC<ResultReportProps> = ({
             ) : (
               <LineChart data={analysis.timelineData}>
                 <CartesianGrid stroke="rgba(74, 222, 128, 0.12)" strokeDasharray="3 3" />
-                <XAxis dataKey="date" stroke="#B4C6BC" fontSize={14} tickLine={false} />
-                <YAxis stroke="#B4C6BC" fontSize={14} tickLine={false} domain={[40, 100]} />
+                <XAxis dataKey="date" stroke="#B4C6BC" fontSize={13} tickLine={false} />
+                <YAxis stroke="#B4C6BC" fontSize={13} tickLine={false} domain={[40, 100]} />
                 <Tooltip 
                   contentStyle={{ 
                     backgroundColor: '#111C17', 
@@ -471,7 +630,7 @@ export const ResultReport: React.FC<ResultReportProps> = ({
                   }} 
                 />
                 <Legend 
-                  wrapperStyle={{ fontSize: '14px', color: '#B4C6BC', paddingTop: '10px' }} 
+                  wrapperStyle={{ fontSize: '13px', color: '#B4C6BC', paddingTop: '10px' }} 
                 />
                 <Line 
                   type="monotone" 
@@ -494,7 +653,7 @@ export const ResultReport: React.FC<ResultReportProps> = ({
               <TrendingDown className="w-5 h-5 text-accent" />
               <span>{t('consumption_section_title')}</span>
             </span>
-            <span className="text-sm text-text-secondary">
+            <span className="text-xs sm:text-sm text-text-secondary">
               {t('consumption_section_explainer')}
             </span>
           </div>
@@ -503,8 +662,8 @@ export const ResultReport: React.FC<ResultReportProps> = ({
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={consumptionBarData} layout="vertical" margin={{ left: 20, right: 60, top: 10, bottom: 10 }}>
                 <CartesianGrid stroke="rgba(74, 222, 128, 0.12)" horizontal={false} />
-                <XAxis type="number" stroke="#B4C6BC" fontSize={13} />
-                <YAxis dataKey="mineral" type="category" stroke="#B4C6BC" fontSize={14} tickLine={false} width={130} />
+                <XAxis type="number" stroke="#B4C6BC" fontSize={12} />
+                <YAxis dataKey="mineral" type="category" stroke="#B4C6BC" fontSize={13} tickLine={false} width={130} />
                 <Tooltip 
                   contentStyle={{ 
                     backgroundColor: '#111C17', 
@@ -518,7 +677,7 @@ export const ResultReport: React.FC<ResultReportProps> = ({
                   {consumptionBarData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
-                  <LabelList dataKey="displayRate" position="right" fill="#F1F6F3" fontSize={13} offset={10} />
+                  <LabelList dataKey="displayRate" position="right" fill="#F1F6F3" fontSize={12} offset={10} />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -540,18 +699,18 @@ export const ResultReport: React.FC<ResultReportProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border-green">
           <div>
             <div className="flex items-center gap-2.5">
-              <CloudSun className="w-6 h-6 text-accent" />
+              <CloudSun className="w-5 h-5 sm:w-6 sm:h-6 text-accent" />
               <h3 className="text-xl sm:text-2xl font-bold text-text-primary font-bengali">
                 {t('weather_section_title')}
               </h3>
             </div>
-            <p className="text-base text-text-secondary mt-1">
+            <p className="text-sm sm:text-base text-text-secondary mt-1">
               {t('weather_section_explainer')}
             </p>
           </div>
 
           <span
-            className={`px-4 py-1.5 rounded-full text-sm font-bold border ${getStatusPillClasses(weatherEval.riskLabel === 'Low' ? 'Good' : weatherEval.riskLabel === 'Moderate' ? 'Fair' : 'Critical')}`}
+            className={`px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold border self-start sm:self-auto ${getStatusPillClasses(weatherEval.riskLabel === 'Low' ? 'Good' : weatherEval.riskLabel === 'Moderate' ? 'Fair' : 'Critical')}`}
           >
             {t('weather_risk_label')} {t(weatherEval.riskKey)}
           </span>
@@ -581,15 +740,15 @@ export const ResultReport: React.FC<ResultReportProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border-green">
           <div>
             <h3 className="text-xl sm:text-2xl font-bold text-text-primary font-bengali flex items-center gap-2.5">
-              <Award className="w-6 h-6 text-accent" />
+              <Award className="w-5 h-5 sm:w-6 sm:h-6 text-accent" />
               <span>{t('ranking_section_title')}</span>
             </h3>
-            <p className="text-base text-text-secondary mt-1">
+            <p className="text-sm sm:text-base text-text-secondary mt-1">
               {t('ranking_section_explainer')}
             </p>
           </div>
 
-          <div className="text-base text-accent font-semibold">
+          <div className="text-sm sm:text-base text-accent font-semibold self-start sm:self-auto">
             {t('ranking_batch_position', {
               rank: analysis.batchRank,
               total: analysis.totalSectionsCount
@@ -605,15 +764,15 @@ export const ResultReport: React.FC<ResultReportProps> = ({
             return (
               <div
                 key={sec.sectionKey}
-                className={`p-5 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all ${
+                className={`p-4 sm:p-5 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 transition-all ${
                   isSelected
                     ? 'border-accent bg-card-elevated shadow-glow-sm ring-1 ring-accent'
                     : 'border-border-green bg-card hover:bg-card-elevated'
                 }`}
               >
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3.5">
                   <span
-                    className={`w-9 h-9 rounded-xl text-sm font-mono font-bold flex items-center justify-center shrink-0 ${
+                    className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl text-xs sm:text-sm font-mono font-bold flex items-center justify-center shrink-0 ${
                       idx === 0
                         ? 'bg-alert-warning/20 text-alert-warning border border-alert-warning/40'
                         : 'bg-bg text-text-secondary border border-border-green'
@@ -623,36 +782,36 @@ export const ResultReport: React.FC<ResultReportProps> = ({
                   </span>
 
                   <div>
-                    <div className="flex items-center gap-2.5 flex-wrap">
-                      <h4 className="text-base sm:text-lg font-bold text-text-primary font-mono">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-sm sm:text-base font-bold text-text-primary font-mono">
                         {sec.sectionKey}
                       </h4>
                       {isSelected && (
-                        <span className="text-xs px-2 py-0.5 rounded bg-accent text-text-on-accent font-bold">
+                        <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded bg-accent text-text-on-accent font-bold">
                           {t('ranking_this_batch_badge')}
                         </span>
                       )}
-                      <span className="text-sm text-text-secondary">
+                      <span className="text-xs sm:text-sm text-text-secondary">
                         ({t(secCropKey)})
                       </span>
                     </div>
-                    <span className="text-sm text-text-secondary block mt-0.5">
+                    <span className="text-xs sm:text-sm text-text-secondary block mt-0.5">
                       {t(sec.problemKey)}
                     </span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4 self-end md:self-auto flex-wrap">
+                <div className="flex items-center gap-3 sm:gap-4 self-end md:self-auto flex-wrap">
                   {/* Clean readable NPK labels in regular font, monospace ONLY for numbers */}
-                  <div className="flex items-center gap-3 text-sm sm:text-base text-text-secondary">
-                    <span>{t('chart_nitrogen')} <strong className="font-mono text-text-primary text-base">{sec.latestN !== null ? formatNumber(sec.latestN) : '—'}</strong></span>
+                  <div className="flex items-center gap-2.5 sm:gap-3 text-xs sm:text-sm text-text-secondary">
+                    <span>{t('chart_nitrogen')} <strong className="font-mono text-text-primary text-sm">{sec.latestN !== null ? formatNumber(sec.latestN) : '—'}</strong></span>
                     <span>•</span>
-                    <span>{t('chart_phosphorus')} <strong className="font-mono text-text-primary text-base">{sec.latestP !== null ? formatNumber(sec.latestP) : '—'}</strong></span>
+                    <span>{t('chart_phosphorus')} <strong className="font-mono text-text-primary text-sm">{sec.latestP !== null ? formatNumber(sec.latestP) : '—'}</strong></span>
                     <span>•</span>
-                    <span>{t('chart_potassium')} <strong className="font-mono text-text-primary text-base">{sec.latestK !== null ? formatNumber(sec.latestK) : '—'}</strong></span>
+                    <span>{t('chart_potassium')} <strong className="font-mono text-text-primary text-sm">{sec.latestK !== null ? formatNumber(sec.latestK) : '—'}</strong></span>
                   </div>
 
-                  <span className={`px-3 py-1.5 rounded-lg text-sm font-bold border ${getStatusPillClasses(sec.level)}`}>
+                  <span className={`px-3 py-1 rounded-lg text-xs sm:text-sm ${getStatusPillClasses(sec.level)}`}>
                     {t(sec.levelKey)}
                   </span>
                 </div>
@@ -663,12 +822,18 @@ export const ResultReport: React.FC<ResultReportProps> = ({
 
         {/* Comparison Summary */}
         <div className="p-4 rounded-xl bg-card-elevated border border-border-green text-sm sm:text-base text-text-secondary flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-          <span>{t('ranking_avg_score', { score: analysis.averageHealthScore })}</span>
-          <span className="font-semibold text-text-primary">
-            {analysis.scoreBreakdown.totalScore >= analysis.averageHealthScore
-              ? t('ranking_comparison_better', { diff: analysis.scoreBreakdown.totalScore - analysis.averageHealthScore })
-              : t('ranking_comparison_worse', { diff: analysis.averageHealthScore - analysis.scoreBreakdown.totalScore })}
+          <span>
+            {analysis.averageHealthScore !== null
+              ? t('ranking_avg_score', { score: analysis.averageHealthScore })
+              : t('problem_insufficient_data')}
           </span>
+          {analysis.averageHealthScore !== null && analysis.scoreBreakdown.totalScore !== null && (
+            <span className="font-semibold text-text-primary">
+              {analysis.scoreBreakdown.totalScore >= analysis.averageHealthScore
+                ? t('ranking_comparison_better', { diff: analysis.scoreBreakdown.totalScore - analysis.averageHealthScore })
+                : t('ranking_comparison_worse', { diff: analysis.averageHealthScore - analysis.scoreBreakdown.totalScore })}
+            </span>
+          )}
         </div>
       </div>
 

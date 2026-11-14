@@ -250,4 +250,39 @@ export const en = {
   unit_rows: 'rows',
   unit_pts: 'pts',
   unit_week: 'week',
+  unit_na: 'N/A',
+
+  // Non-crop image rejection & validation
+  non_crop_alert_title: 'Non-Agricultural Image Detected',
+  non_crop_alert_desc: 'The uploaded photo was identified as {subject}. It does not contain crop foliage, leaves, or plants. Foliar disease diagnosis has been halted.',
+  btn_reupload_crop_image: 'Upload Valid Crop Image',
+  non_crop_badge: 'Non-Crop Image',
+
+  // Crop vitality & trigger distinctions (prevents contradiction)
+  vitality_title: 'Overall Crop Vitality Index',
+  vitality_trigger_soil: 'Triggered by Soil Sensors',
+  vitality_trigger_foliar: 'Triggered by Foliar Pathogen',
+  vitality_trigger_both: 'Dual Soil & Foliage Risk',
+  vitality_trigger_sensor_only: 'Soil Telemetry Only',
+  vitality_trigger_balanced: 'Soil & Foliage Optimal',
+  vitality_trigger_insufficient: 'Insufficient Evidence',
+
+  // Synthesized explainers connecting soil and foliage
+  synthesis_soil_critical_leaf_healthy: 'Pre-Symptomatic Alert: Soil sensors show critical nutrient depletion while foliage currently shows no fungal lesions. Treat soil before leaf necrosis begins.',
+  synthesis_soil_ok_leaf_diseased: 'Foliar Pathogen Alert: Soil mineral reserves are adequate, but foliage exhibits active disease symptoms. Targeted protective treatment recommended.',
+  synthesis_both_critical: 'Compound Risk: Both soil mineral reserves and leaf tissue are under severe stress. Immediate comprehensive intervention required.',
+  synthesis_non_crop: 'Telemetry Only: Derived from soil sensor logs. The uploaded image is non-agricultural, so foliar disease status could not be verified.',
+  synthesis_balanced: 'Optimal Vitality: Both soil mineral reserves and leaf tissue appear in healthy balance.',
+
+  // Foliar diagnosis statuses & observations
+  pest_status_healthy: 'Healthy Foliage',
+  pest_status_diseased: 'Foliar Symptoms Detected',
+  pest_status_non_crop: 'Non-Crop Image',
+  pest_status_low_quality: 'Insufficient Visual Evidence',
+  visual_observations_title: 'Direct Visual Observations',
+  ai_hypothesis_badge: 'Tentative AI Hypothesis',
+  ai_confidence_label: 'Visual Certainty',
+  uncertainty_badge: 'Low Confidence (Uncertain)',
+  image_quality_blurry: 'Image is too blurry or low-light to detect microscopic lesions.',
+  status_insufficient_sensor: 'Insufficient Sensor Data',
 };

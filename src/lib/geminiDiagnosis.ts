@@ -9,18 +9,23 @@ export interface BilingualList {
 }
 
 export interface PestDiagnosisResult {
+  isCropOrPlant: boolean;
+  detectedSubject: string;
+  imageQuality: 'clear' | 'blurry' | 'too_dark' | 'too_far' | 'unclear';
+  rejectionReason: BilingualText | null;
+  visualObservations: BilingualList;
   pestDetected: boolean;
   pestOrDisease: BilingualText;
-  confidence: number;
+  diagnosisConfidence: number | null;
   severity: 'none' | 'low' | 'medium' | 'high';
-  visibleSymptoms: BilingualList;
+  isHypothesisOnly: boolean;
   recommendation: BilingualText;
   isLowQuality: boolean;
 }
 
 /**
  * Calls backend endpoint /api/analyze-crop
- * Returns full bilingual diagnosis for instant language switching
+ * Returns full bilingual diagnosis with subject validation and genuine evidence-based scoring
  */
 export const diagnoseCropImage = async (
   imageBase64: string,
@@ -42,44 +47,63 @@ export const diagnoseCropImage = async (
 
     const data = await res.json();
 
-    // Ensure structure compatibility
+    const isCropOrPlant = data.isCropOrPlant !== undefined ? Boolean(data.isCropOrPlant) : true;
+    const isLowQuality = Boolean(data.isLowQuality || data.imageQuality === 'blurry' || data.imageQuality === 'too_dark');
+
     return {
-      pestDetected: Boolean(data.pestDetected),
+      isCropOrPlant,
+      detectedSubject: data.detectedSubject || (isCropOrPlant ? cropType : 'Unknown Object'),
+      imageQuality: data.imageQuality || (isLowQuality ? 'blurry' : 'clear'),
+      rejectionReason: data.rejectionReason && typeof data.rejectionReason === 'object' ? {
+        en: data.rejectionReason.en || 'Non-agricultural image detected.',
+        bn: data.rejectionReason.bn || 'অনুপযুক্ত বা অ-কৃষিবিষয়ক ছবি সনাক্ত হয়েছে।',
+      } : null,
+      visualObservations: {
+        en: Array.isArray(data.visualObservations?.en) ? data.visualObservations.en : ['Visual inspection completed.'],
+        bn: Array.isArray(data.visualObservations?.bn) ? data.visualObservations.bn : ['ভিজ্যুয়াল নিরীক্ষা সম্পন্ন হয়েছে।'],
+      },
+      pestDetected: isCropOrPlant ? Boolean(data.pestDetected) : false,
       pestOrDisease: {
-        en: typeof data.pestOrDisease === 'object' ? data.pestOrDisease.en || 'No pests detected' : data.pestOrDisease || 'No pests detected',
-        bn: typeof data.pestOrDisease === 'object' ? data.pestOrDisease.bn || 'কোনো পোকা বা রোগ শনাক্ত হয়নি' : data.pestOrDiseaseBn || 'কোনো পোকা বা রোগ শনাক্ত হয়নি',
+        en: typeof data.pestOrDisease === 'object' ? data.pestOrDisease.en || 'N/A' : data.pestOrDisease || 'N/A',
+        bn: typeof data.pestOrDisease === 'object' ? data.pestOrDisease.bn || 'প্রযোজ্য নয়' : data.pestOrDiseaseBn || 'প্রযোজ্য নয়',
       },
-      confidence: typeof data.confidence === 'number' ? data.confidence : 90,
-      severity: data.severity || 'none',
-      visibleSymptoms: {
-        en: Array.isArray(data.visibleSymptoms?.en) ? data.visibleSymptoms.en : Array.isArray(data.visibleSymptoms) ? data.visibleSymptoms : ['Leaf tissue intact'],
-        bn: Array.isArray(data.visibleSymptoms?.bn) ? data.visibleSymptoms.bn : ['পাতার পৃষ্ঠ স্বাভাবিক ও সুস্থ'],
-      },
+      diagnosisConfidence: typeof data.diagnosisConfidence === 'number'
+        ? data.diagnosisConfidence
+        : typeof data.confidence === 'number' && isCropOrPlant && !isLowQuality
+        ? data.confidence
+        : null,
+      severity: isCropOrPlant ? (data.severity || 'none') : 'none',
+      isHypothesisOnly: Boolean(data.isHypothesisOnly),
       recommendation: {
-        en: typeof data.recommendation === 'object' ? data.recommendation.en : data.recommendation || 'Maintain normal irrigation and balanced nutrition.',
-        bn: typeof data.recommendation === 'object' ? data.recommendation.bn : data.recommendationBn || 'নিয়মিত সেচ ও পরিমিত সার প্রয়োগ বজায় রাখুন।',
+        en: typeof data.recommendation === 'object' ? data.recommendation.en : data.recommendation || 'Consult your local agricultural extension service.',
+        bn: typeof data.recommendation === 'object' ? data.recommendation.bn : data.recommendationBn || 'পরামর্শের জন্য স্থানীয় কৃষি কর্মকর্তার সাথে যোগাযোগ করুন।',
       },
-      isLowQuality: Boolean(data.isLowQuality),
+      isLowQuality,
     };
   } catch (err) {
-    console.warn('Backend diagnosis endpoint error, using local fallback:', err);
+    console.warn('Backend diagnosis endpoint error, using transparent fallback:', err);
     return {
+      isCropOrPlant: true,
+      detectedSubject: `${cropType} Leaf (Offline)`,
+      imageQuality: 'unclear',
+      rejectionReason: null,
+      visualObservations: {
+        en: ['Online vision inspection unavailable — offline mode'],
+        bn: ['অনলাইন এআই দৃষ্টি সংযোগ নেই — অফলাইন মোড'],
+      },
       pestDetected: false,
       pestOrDisease: {
-        en: 'No visible pest or disease detected',
-        bn: 'কোনো রোগ বা ক্ষতিকর পোকার আক্রমণ শনাক্ত হয়নি',
+        en: 'Visual Inspection Pending',
+        bn: 'ভিজ্যুয়াল নিরীক্ষা অপেক্ষমাণ',
       },
-      confidence: 91,
+      diagnosisConfidence: null,
       severity: 'none',
-      visibleSymptoms: {
-        en: ['Leaf surface intact', 'Chlorophyll pigmentation consistent'],
-        bn: ['পাতার পৃষ্ঠতল স্বাভাবিক', 'সবুজ ক্লোরোফিল সুষম'],
-      },
+      isHypothesisOnly: true,
       recommendation: {
-        en: 'Maintain regular irrigation and balanced top-dressing based on soil sensors.',
-        bn: 'মাটির সেন্সর তথ্যানুযায়ী পরিমিত সেচ ও সুষম সার প্রয়োগ বজায় রাখুন।',
+        en: 'Maintain balanced crop care and review soil telemetry trends.',
+        bn: 'সুষম পরিচর্যা বজায় রাখুন এবং মাটির সেন্সর ডেটা পর্যবেক্ষণ করুন।',
       },
-      isLowQuality: false,
+      isLowQuality: true,
     };
   }
 };
