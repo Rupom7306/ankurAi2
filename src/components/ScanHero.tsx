@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Camera, Upload, AlertCircle, X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { optimizeImageFile } from '../lib/imageUtils';
 
 interface ScanHeroProps {
   onImageSelected: (dataUrl: string, fileName?: string) => void;
@@ -18,19 +19,25 @@ export const ScanHero: React.FC<ScanHeroProps> = ({
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // File processing
-  const processFile = (file: File) => {
+  // File processing with automated smartphone photo downscaling/compression
+  const processFile = async (file: File) => {
     if (!file.type.startsWith('image/')) {
       alert(t('scan_cam_device_error'));
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        onImageSelected(reader.result, file.name);
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const optimizedDataUrl = await optimizeImageFile(file);
+      onImageSelected(optimizedDataUrl, file.name);
+    } catch (err) {
+      console.warn('Image optimization fallback:', err);
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          onImageSelected(reader.result, file.name);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
